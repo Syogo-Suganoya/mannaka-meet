@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>マンナカ — N人会議場所最適化</title>
+<link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+<header>
+  <h1>マンナカ</h1>
+  <p class="tagline">「いつも本社」を、公平性ポリシー付きの最適化に置き換える</p>
+  <div id="providers" class="providers"></div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>1. チャットで依頼 <span class="hint">全員が見る場。個人の出発駅は出ません</span></h2>
+    <div class="row">
+      <button id="seed-btn" class="ghost">デモ参加者を登録</button>
+      <label class="inline">発言者
+        <select id="author-select"></select>
+      </label>
+    </div>
+    <div id="chat" class="chat"></div>
+    <div class="row chat-input">
+      <textarea id="request-text" rows="2">@マンナカ 来週火曜14時、この6人で。2時間、ホワイトボードのある部屋で。いちばん遠い人の負担を減らしたい</textarea>
+      <button id="create-btn">送信</button>
+    </div>
+    <div id="participants" class="chips"></div>
+    <div id="meeting-summary" class="summary"></div>
+  </section>
+
+  <section class="panel">
+    <h2>2. 候補地 <span class="hint">どの基準で選んだかを常に明示します</span></h2>
+    <div class="row policies" id="policy-tabs">
+      <button data-policy="minimax" class="policy active">最大負担の平準化<small>minimax</small></button>
+      <button data-policy="sum" class="policy">合計移動時間最小<small>sum</small></button>
+      <button data-policy="cost" class="policy">総運賃最小<small>cost</small></button>
+    </div>
+    <p id="explanation" class="explanation"></p>
+    <div id="policy-diff" class="policy-diff"></div>
+    <div id="candidates" class="candidates"></div>
+  </section>
+
+  <section class="panel">
+    <h2>3. 手配 <span class="hint">有料予約は主催者承認＋上限額</span></h2>
+    <div id="rooms" class="rooms"></div>
+    <div id="approval" class="approval"></div>
+  </section>
+
+  <section class="panel">
+    <h2>4. 配信・当日フォロー</h2>
+    <div class="row">
+      <button id="disrupt-btn" class="ghost">遅延を発生させる（デモ）</button>
+      <button id="followup-btn" class="ghost">運行状況を確認</button>
+    </div>
+    <div id="followup" class="followup"></div>
+
+    <h3>アプリ内通知 <span class="hint">本人にだけ届く。外部には一切送りません</span></h3>
+    <label class="inline">受信者
+      <select id="inbox-select"></select>
+    </label>
+    <div id="inbox" class="outbox"></div>
+  </section>
+
+  <section class="panel">
+    <h2>5. 監査ログ <span class="hint">ポリシー選択・支出承認・リスケの証跡</span></h2>
+    <div id="audit" class="audit"></div>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

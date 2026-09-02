@@ -1,0 +1,7 @@
+# APIキーはコミットしない（.env.example が雛形）
+.env
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/

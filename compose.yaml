@@ -1,0 +1,56 @@
+services:
+  api:
+    build: .
+    ports:
+      # ホスト側は 8081（8080 は他プロジェクトが使うことがあるため）
+      - "${HOST_PORT:-8081}:8080"
+    environment:
+      PORT: 8080
+      MANNAKA_ENV: local
+      # モック / 実API の差し替えスイッチ
+      TRANSIT_PROVIDER: ${TRANSIT_PROVIDER:-mock}     # mock | ekispert
+      ROOMS_PROVIDER: ${ROOMS_PROVIDER:-mock}         # mock | spacee
+      CALENDAR_PROVIDER: ${CALENDAR_PROVIDER:-mock}   # mock | google
+      REPOSITORY: ${REPOSITORY:-firestore}            # firestore | memory
+      LLM_PROVIDER: ${LLM_PROVIDER:-stub}             # stub | gemini
+      # 実APIに差し替えるときだけ設定する
+      EKISPERT_API_KEY: ${EKISPERT_API_KEY:-}
+      EKISPERT_MCP_URL: ${EKISPERT_MCP_URL:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
+      FIRESTORE_EMULATOR_HOST: ${FIRESTORE_EMULATOR_HOST:-firestore:8200}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-mannaka-local}
+      AGENT_SPEND_LIMIT_YEN: ${AGENT_SPEND_LIMIT_YEN:-5000}
+    volumes:
+      - ./app:/app/app
+      - ./web:/app/web
+      - ./tests:/app/tests
+    command: sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --reload"
+    depends_on:
+      firestore:
+        condition: service_healthy
+
+  # アーキテクチャ図の生成: docker compose --profile docs run --rm docs
+  docs:
+    profiles: ["docs"]
+    build:
+      context: .
+      dockerfile: Dockerfile.docs
+    volumes:
+      - ./docs:/work/docs
+
+  # データはすべて Firestore に置く。ローカルはエミュレータで動かす。
+  firestore:
+    image: google/cloud-sdk:emulators
+    command: >
+      gcloud emulators firestore start
+      --host-port=0.0.0.0:8200
+      --project=mannaka-local
+    ports:
+      - "${FIRESTORE_PORT:-8200}:8200"
+    healthcheck:
+      test: ["CMD", "sh", "-c", "curl -sf http://localhost:8200/ > /dev/null"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
