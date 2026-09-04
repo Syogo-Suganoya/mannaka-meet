@@ -73,9 +73,15 @@ def test_ranking_is_stable_for_ties():
     assert [c.area for c in ranked] == ["あ", "い"]
 
 
-def test_anonymized_breakdown_hides_identity():
-    """他参加者には誰がどこから来るかを見せない（設計書 §7-1）。"""
-    rows = LOPSIDED.anonymized_legs()
-    assert [r["participant"] for r in rows] == ["参加者A", "参加者B", "参加者C"]
-    assert all("uid" not in r and "from_station" not in r for r in rows)
+def test_breakdown_names_each_participant_heaviest_first():
+    """誰がどれだけ負担しているかを、名前と出発駅で示す。"""
+    names = {leg.uid: f"{leg.uid}さん" for leg in LOPSIDED.legs}
+    rows = LOPSIDED.breakdown(names)
     assert rows[0]["duration_minutes"] == 70  # 所要時間の降順
+    assert rows[0]["participant"] == "cさん"  # 70分かかっている人
+    assert all(r["origin_station"] for r in rows)
+
+
+def test_breakdown_falls_back_to_symbols_without_names():
+    rows = LOPSIDED.breakdown()
+    assert [r["participant"] for r in rows] == ["参加者A", "参加者B", "参加者C"]

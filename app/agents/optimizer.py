@@ -39,6 +39,23 @@ class OptimizerAgent:
         self._candidate_limit = candidate_limit
         self._buffer_minutes = buffer_minutes
 
+    async def unknown_stations(self, stations: list[str]) -> list[str]:
+        """経路を引けない駅名を返す。
+
+        黙って近くの駅に寄せると、その人だけ0分0円で来られることになり、
+        どの候補が最良かという結論そのものが狂う。受け付ける前に弾く。
+        列挙できないプロバイダ（実API）では常に空を返す。
+        """
+        known = await self._transit.known_stations()
+        if known is None:
+            return []
+        seen: list[str] = []
+        for station in stations:
+            name = (station or "").strip()
+            if name and name not in known and name not in seen:
+                seen.append(name)
+        return seen
+
     async def evaluate(
         self, *, meeting_id: str, request: MeetingRequest, policy: FairnessPolicy
     ) -> OptimizationResult:
@@ -62,6 +79,12 @@ class OptimizerAgent:
         ]
         result = optimization.optimize(candidates, policy)
         result.explanation = await self._explain(result, request)
+
+        # 地図を描くための座標。出せないプロバイダなら空のまま
+        coords = await self._transit.coordinates(
+            sorted({*origins, *(c.station for c in candidates)})
+        )
+        result.places = {name: [x, y] for name, (x, y) in coords.items()}
 
         await self._audit.record(
             action="candidates.evaluated",

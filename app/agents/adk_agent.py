@@ -1,10 +1,8 @@
 """ADK（Agent Development Kit）でのエージェント公開。
 
-Orchestrator の各操作を FunctionTool として LlmAgent に渡し、チャットからの
-自然言語指示で一気通貫を駆動できるようにする。ADK / Gemini が使えない環境では
+Orchestrator の各操作を FunctionTool として LlmAgent に渡し、自然言語の指示で
+候補算出を駆動できるようにする。ADK / Gemini が使えない環境では
 build_root_agent() が None を返し、REST API 側の機能はそのまま使える。
-
-有料予約の確定はツールとして公開しない（承認ゲートを LLM に迂回させないため）。
 """
 
 from __future__ import annotations
@@ -21,14 +19,11 @@ INSTRUCTION = """あなたは「マンナカ」— N人会議の場所を公平�
 守ること:
 - 場所を提案するときは、必ずどの公平性ポリシー（sum=合計移動時間最小 /
   minimax=最大負担の平準化 / cost=総運賃最小）で選んだかを明示する。
-- 誰がどこから来るかは絶対に開示しない。集計値と匿名の内訳だけを話す。
-- 有料の会議室予約は主催者の承認が必要。あなたは承認できない。承認が必要な
-  ときは金額と上限額を伝えて主催者に判断を仰ぐ。
-- 当日の遅延対応は「提案」まで。時刻変更を勝手に確定しない。
+- 誰がどれだけ負担するかは名前と出発駅つきで示す。偏りを隠さない。
+- どの場所にするかは決めない。候補と根拠を出すところまでが仕事。
 
-手順: 依頼を interpret_request で構造化 → evaluate_candidates で候補算出 →
-compare_fairness_policies で基準ごとの差を示す → 主催者が場所を選んだら
-find_rooms → stage_arrangement。承認が要る場合はそこで止まる。
+手順: create_meeting で候補算出 → evaluate_candidates で基準を入れ替え →
+compare_fairness_policies で基準ごとの差を示す。
 """
 
 
@@ -36,26 +31,24 @@ def build_tools(container: Container) -> list:
     """Orchestrator の操作を ADK ツールとして公開する。"""
     orchestrator = container.orchestrator
 
-    async def interpret_request(
-        text: str, participant_uids: list[str], organizer_uid: str
-    ) -> dict:
-        """依頼文を解釈して会議の下書きを作る。
+    async def create_meeting(names: list[str], stations: list[str], notes: str) -> dict:
+        """参加者から候補地を算出する。
 
         Args:
-            text: 「来週火曜14時、この6人で」のような依頼文。
-            participant_uids: 参加者の uid 一覧。
-            organizer_uid: 主催者の uid。
+            names: 参加者の名前（stations と同じ並び）。
+            stations: 各参加者の出発駅。
+            notes: 「いちばん遠い人の負担を減らしたい」などの希望条件。
         Returns:
-            meeting_id と解釈結果。
+            meeting_id と採用した基準。
         """
-        meeting, parsed = await orchestrator.interpret(
-            text=text, participant_uids=participant_uids, organizer_uid=organizer_uid
+        meeting = await orchestrator.create_meeting(
+            participants=list(zip(names, stations)), notes=notes
         )
         return {
             "meeting_id": meeting.meeting_id,
             "starts_at": meeting.request.starts_at.isoformat(),
             "participant_count": len(meeting.request.participants),
-            "parsed": parsed,
+            "policy": meeting.policy.value if meeting.policy else None,
         }
 
     async def evaluate_candidates(meeting_id: str, policy: str) -> dict:
@@ -81,7 +74,9 @@ def build_tools(container: Container) -> list:
                     "total_minutes": c.total_minutes,
                     "max_minutes": c.max_minutes,
                     "total_fare_yen": c.total_fare_yen,
-                    "breakdown": c.anonymized_legs(),
+                    "breakdown": c.breakdown(
+                        {p.uid: p.display_name for p in meeting.request.participants}
+                    ),
                 }
                 for c in result.candidates
             ],
@@ -97,58 +92,10 @@ def build_tools(container: Container) -> list:
         """
         return await orchestrator.policy_comparison(meeting_id)
 
-    async def find_rooms(meeting_id: str, station: str) -> dict:
-        """候補地の周辺で条件に合う会議室を探す。
-
-        Args:
-            meeting_id: 会議ID。
-            station: 候補地の駅名。
-        Returns:
-            会議室の一覧（料金・徒歩分・設備）。
-        """
-        rooms = await orchestrator.list_rooms(meeting_id, station)
-        return {"rooms": [r.model_dump(mode="json") for r in rooms]}
-
-    async def stage_arrangement(meeting_id: str, station: str, room_id: str) -> dict:
-        """会議室を仮押さえし、有料なら主催者の承認を要求する。確定はしない。
-
-        Args:
-            meeting_id: 会議ID。
-            station: 確定する候補地の駅名。
-            room_id: 仮押さえする会議室ID。
-        Returns:
-            会議の状態と承認要否。
-        """
-        meeting = await orchestrator.stage_arrangement(
-            meeting_id, station=station, room_id=room_id
-        )
-        return {
-            "status": meeting.status.value,
-            "approval": meeting.approval.model_dump(mode="json") if meeting.approval else None,
-            "hold_id": meeting.hold.hold_id if meeting.hold else None,
-        }
-
-    async def check_service_disruptions(meeting_id: str) -> dict:
-        """当日の運行障害を確認し、必要なら開始時刻調整を起案する。
-
-        Args:
-            meeting_id: 会議ID。
-        Returns:
-            起案の有無と内容。
-        """
-        _, proposal = await orchestrator.follow_up(meeting_id)
-        return {
-            "proposed": proposal is not None,
-            "proposal": proposal.model_dump(mode="json") if proposal else None,
-        }
-
     return [
-        interpret_request,
+        create_meeting,
         evaluate_candidates,
         compare_fairness_policies,
-        find_rooms,
-        stage_arrangement,
-        check_service_disruptions,
     ]
 
 
@@ -164,7 +111,7 @@ def build_root_agent(container: Container):
         return LlmAgent(
             name="mannaka_orchestrator",
             model=settings.gemini_model,
-            description="N人会議の場所を公平性ポリシー付きで最適化し手配するエージェント",
+            description="N人会議の場所を公平性ポリシー付きで比較するエージェント",
             instruction=INSTRUCTION,
             tools=build_tools(container),
         )

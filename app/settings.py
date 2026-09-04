@@ -16,8 +16,6 @@ class Settings(BaseSettings):
 
     # 差し替えスイッチ
     transit_provider: Literal["mock", "ekispert"] = "mock"
-    rooms_provider: Literal["mock"] = "mock"  # 実会議室APIはMVP対象外（設計書 §8）
-    calendar_provider: Literal["mock", "google"] = "mock"
     repository: Literal["firestore", "memory"] = "firestore"
     llm_provider: Literal["stub", "gemini"] = "stub"
 
@@ -26,11 +24,9 @@ class Settings(BaseSettings):
     ekispert_base_url: str = "https://api.ekispert.jp/v1/json"
     google_api_key: str = ""
     gemini_model: str = "gemini-3.7-flash"
-    google_calendar_id: str = "primary"
     google_cloud_project: str = "mannaka-local"
 
-    # ガバナンス（設計書 §7-2）
-    agent_spend_limit_yen: int = 5000
+    # 評価のパラメータ
     candidate_limit: int = 8
     buffer_minutes: int = 10  # 到着バッファ
 

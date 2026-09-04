@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>マンナカ</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<!-- 実地図。読み込めなかった場合は app.js が自前のSVG地図に落とす。 -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="/">マンナカ<span class="dot">.</span></a>
+  <button type="button" id="edit-request" class="btn ghost small" hidden>条件を変える</button>
+</header>
+
+<article id="meeting" hidden>
+  <div class="summary">
+    <h2 id="m-title"></h2>
+  </div>
+
+  <!-- 地図・候補・表情の3カラム。地図と表情は選択中の候補を映す。 -->
+  <main class="layout">
+    <section class="col map-col">
+      <div class="block-head">
+        <h3>どこに集まるか</h3>
+      </div>
+      <div id="map" class="map"></div>
+    </section>
+
+    <section class="col list-col">
+      <!-- 候補を送っても基準は動かない。見出しごと上に貼り付ける -->
+      <div class="list-head">
+        <div class="block-head">
+          <h3>候補地</h3>
+          <span class="hint">押すと地図と様子が変わります</span>
+        </div>
+        <div id="policy-tabs" class="policy-tabs" role="tablist"></div>
+      </div>
+      <div id="candidates" class="candidates"></div>
+    </section>
+
+    <section class="col faces-col">
+      <div class="block-head">
+        <h3>みんなの様子</h3>
+      </div>
+      <div id="faces" class="faces"></div>
+    </section>
+  </main>
+</article>
+
+<!-- 狭い画面では地図と様子を畳んでおき、候補を押したときにひとつの面へまとめて
+     出す。中身は3カラムと同じ要素をそのまま使う（作り直すと地図が壊れる）。 -->
+<div id="sheet-back" class="sheet-back"></div>
+<button type="button" id="sheet-close" class="sheet-close" aria-label="閉じる">×</button>
+
+<!-- 候補地が出るまでは開きっぱなし。出たあとは重ねて開くモーダル。 -->
+<div id="request-modal" class="modal" hidden>
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="request-title">
+    <div class="modal-head">
+      <h2 id="request-title">誰がどこから集まる？</h2>
+      <p>名前と出発駅を入れると、公平な集合場所を比べられます。</p>
+      <button type="button" id="request-close" class="icon-btn" aria-label="閉じる" hidden>×</button>
+    </div>
+
+    <form id="request-form" class="request">
+      <label>集合日時
+        <input type="datetime-local" id="rq-when" required>
+      </label>
+
+      <div class="field">
+        <div class="field-head">
+          <span class="field-label">参加者と出発駅</span>
+          <span id="rq-count" class="hint"></span>
+        </div>
+        <div id="rq-members" class="members"></div>
+        <button type="button" id="rq-add" class="btn ghost small">参加者を追加</button>
+        <p class="hint">保存するのは名前と駅だけです。住所も連絡先も受け取りません。</p>
+      </div>
+
+      <label>その他の希望条件
+        <textarea id="rq-notes" rows="2"
+          placeholder="いちばん遠い人の負担を減らしたい"></textarea>
+        <small>どの公平性の基準で選ぶかをここから読み取ります。</small>
+      </label>
+
+      <button type="submit" class="btn primary wide">候補地を出す</button>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

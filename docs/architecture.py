@@ -48,7 +48,7 @@ def main() -> None:
         users = Users("参加者・主催者")
 
         with Cluster("Cloud Run", graph_attr={"fontname": FONT, "bgcolor": "#eaf1f8"}):
-            app = Run("FastAPI + ADK\nエージェント5種\n＋ 自作チャット・アプリ内通知")
+            app = Run("FastAPI + ADK\nOrchestrator / Optimizer")
 
         with Cluster("外部API", graph_attr={"fontname": FONT, "bgcolor": "#fdf3ec"}):
             ekispert = Action("駅すぱあと API\nMCPサーバー")
@@ -59,8 +59,8 @@ def main() -> None:
             firestore = Firestore("Firestore")
             logging = Logging("Cloud Logging\n監査ログ")
 
-        users >> Edge(label="チャットで依頼・承認", **edge_attr) >> app
-        app >> Edge(label="候補提示・アプリ内通知", **edge_attr) >> users
+        users >> Edge(label="参加者と出発駅", **edge_attr) >> app
+        app >> Edge(label="候補地と負担の内訳", **edge_attr) >> users
         app >> Edge(label="経路・運賃・運行実況", **edge_attr) >> ekispert
         app >> Edge(label="依頼解釈・説明文", **edge_attr) >> gemini
         app >> Edge(label="予定登録", **edge_attr) >> calendar

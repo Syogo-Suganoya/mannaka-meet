@@ -1,0 +1,501 @@
+/* アプリ本体。トップページと同じ路線図モチーフの design language を使う。 */
+
+:root {
+  --paper: #fbfbf8;
+  --ink: #20242b;
+  --sub: #69707d;
+  --line: #e3e3dc;
+  --red: #e5432e;
+  --blue: #1867c0;
+  --green: #0c8f5a;
+  --yellow: #e8a400;
+  --shadow: 0 1px 2px rgba(32, 36, 43, 0.05);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "IBM Plex Sans JP", -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+  line-height: 1.8;
+  font-size: 14px;
+}
+
+.mono, code { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace; }
+code { font-size: 0.85em; background: #fff; border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+.dot { color: var(--red); }
+[hidden] { display: none !important; }
+
+button, input, textarea { font: inherit; color: inherit; }
+
+.btn {
+  border: 1.5px solid var(--ink);
+  background: transparent;
+  border-radius: 999px;
+  padding: 8px 22px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.primary:hover { background: var(--red); border-color: var(--red); }
+.btn.ghost:hover { border-color: var(--blue); color: var(--blue); }
+.btn.danger { border-color: var(--red); color: var(--red); }
+.btn.danger:hover { background: var(--red); color: #fff; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn.wide { width: 100%; }
+.btn.small { padding: 4px 14px; font-size: 0.8rem; }
+
+.hint { color: var(--sub); font-size: 0.8rem; }
+.error { color: var(--red); font-size: 0.85rem; }
+.ok { color: var(--green); font-size: 0.85rem; }
+
+:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+label { display: block; text-align: left; font-size: 0.82rem; color: var(--sub); margin-bottom: 14px; }
+label input {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+label input:focus { border-color: var(--blue); outline: none; }
+label small { display: block; margin-top: 4px; font-size: 0.72rem; }
+
+/* ------------------------------------------------------------ トップバー */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 22px;
+  background: rgba(251, 251, 248, 0.94);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--line);
+}
+.brand { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.08em; text-decoration: none; color: var(--ink); }
+
+.icon-btn {
+  position: absolute; top: 16px; right: 16px;
+  width: 30px; height: 30px;
+  border: 1.5px solid var(--line); background: var(--paper);
+  border-radius: 50%; font-size: 1rem; cursor: pointer; line-height: 1;
+}
+
+/* ------------------------------------------------------------ レイアウト */
+
+.summary { max-width: 1320px; margin: 0 auto; padding: 18px 22px 0; }
+.summary h2 { font-size: 1.05rem; }
+
+/* 地図・候補・様子の3カラム。両脇は選択中の候補を映す面なので、
+   スクロールしても見えているように貼り付ける。 */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.95fr) minmax(360px, 1.5fr) minmax(180px, 0.75fr);
+  gap: 0;
+  align-items: start;
+  max-width: 1320px;
+  margin: 0 auto;
+  min-height: calc(100vh - 57px);
+}
+.col { padding: 18px 22px 40px; }
+.map-col { border-right: 1px solid var(--line); }
+.faces-col { border-left: 1px solid var(--line); }
+.map-col, .faces-col { position: sticky; top: 57px; max-height: calc(100vh - 57px); overflow-y: auto; }
+
+.block-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.block-head h3 { font-size: 0.98rem; line-height: 1.4; }
+
+/* 候補は縦に長い。選んでいる基準を見失わないよう、見出しごと上に貼り付ける。
+   トップバー(20)より下、モーダル(15)より下に潜らせる。 */
+.list-head {
+  position: sticky;
+  top: 57px;
+  z-index: 10;
+  /* 列の余白ぶん外へ広げないと、カードが左右の隙間から透けて流れる */
+  padding: 18px 22px 12px;
+  margin: -18px -22px 0;
+  background: var(--paper);
+}
+
+/* ------------------------------------------------------------ 地図 */
+
+/* 駅どうしは実際の路線ではなく直線で結ぶ。見せたいのは経路ではなく距離の偏り。 */
+.map {
+  height: 320px;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+/* タイルが読めなかったときの略図 */
+.map > svg { display: block; width: 100%; height: 100%; padding: 8px; }
+
+/* 狭い画面だけの下部ボタンと、そこから開く面。既定では出さない。 */
+.sp-bar, .sheet-back, .sheet-close { display: none; }
+
+/* 駅のマーカー。丸を座標に載せ、名前はその下にぶら下げる。
+   MapLibre は要素の中心を座標に合わせるので、丸より広い箱にすると全体がずれる。
+   position を absolute のままにして、.pin を丸のぶんだけに縮ませておく。 */
+.pin { position: absolute; }
+.pin-dot {
+  display: block;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3.5px solid var(--sub);
+  box-sizing: border-box;
+}
+.pin-hub .pin-dot {
+  width: 19px; height: 19px;
+  background: var(--ink);
+  border-color: #fff;
+  box-shadow: 0 0 0 1.5px var(--ink);
+}
+.pin-name {
+  position: absolute;
+  top: 100%; left: 50%;
+  transform: translate(-50%, 3px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.25;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  color: var(--ink);
+  /* 下地の地名の上に重なるので、白で縁取って読めるようにする */
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff;
+}
+.pin-name b { font-weight: 700; }
+.pin-name small { font-size: 0.64rem; color: var(--sub); }
+.pin-hub .pin-name { font-weight: 700; }
+.maplibregl-ctrl-attrib { font-size: 0.62rem; }
+
+/* ------------------------------------------------------------ 依頼フォーム */
+
+/* 会議が無いうちは背景が素のまま（後ろに見せるものが無い）。
+   候補地が出たあとだけ、後ろを暗くして重なりを示す。 */
+.modal {
+  position: fixed;
+  inset: 0;
+  /* トップバー(20)とドロワー(30)より下。開いていても通知やプロフィールは押せる */
+  z-index: 15;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  overflow-y: auto;
+  padding: 80px 24px 40px;
+  background: var(--paper);
+}
+body.has-meeting .modal { background: rgba(32, 36, 43, 0.32); }
+
+.modal-card {
+  width: 100%;
+  max-width: 520px;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  padding: 24px 26px 26px;
+  box-shadow: 0 10px 40px rgba(32, 36, 43, 0.12);
+}
+body:not(.has-meeting) .modal-card { box-shadow: var(--shadow); }
+
+.modal-head { position: relative; margin-bottom: 18px; padding-right: 36px; }
+.modal-head h2 { font-size: 1.05rem; }
+.modal-head p { color: var(--sub); font-size: 0.8rem; }
+.modal-head .icon-btn { top: 0; right: 0; }
+
+.request textarea,
+.request select,
+label textarea {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  padding: 9px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  font-size: 0.88rem;
+}
+.request textarea { resize: vertical; }
+.request textarea:focus,
+.request select:focus { border-color: var(--blue); outline: none; }
+
+.field-row { display: flex; gap: 12px; }
+.field-row label:first-child { flex: 1 1 62%; }
+.field-row label:last-child { flex: 1 1 38%; }
+
+.field { margin-bottom: 14px; }
+.field-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.field-label { font-size: 0.82rem; color: var(--sub); }
+
+/* 参加者は1人1行。名前と出発駅を並べる。 */
+.members {
+  margin: 6px 0 10px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.member:last-child { border-bottom: none; }
+
+/* label input の汎用ルール（幅100%・ブロック）はここでは効かせない */
+.member input {
+  display: block;
+  margin: 0;
+  padding: 5px 11px;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 0.82rem;
+  min-width: 0;
+}
+.member input:focus { border-color: var(--blue); outline: none; }
+.member-name { flex: 1 1 45%; }
+.member-station { flex: 1 1 55%; }
+
+.member-remove {
+  flex: none;
+  width: 24px; height: 24px;
+  border: 1.5px solid var(--line);
+  background: transparent;
+  border-radius: 50%;
+  color: var(--sub);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.member-remove:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+.member-remove:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ------------------------------------------------------------ 候補地 */
+
+.policy-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.ptab {
+  flex: 1 1 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  border-radius: 12px;
+  padding: 11px 10px;
+  cursor: pointer;
+  line-height: 1.4;
+  color: var(--sub);
+}
+.ptab svg { width: 24px; height: 24px; }
+.ptab b { font-size: 0.92rem; color: var(--ink); }
+.ptab small { font-size: 0.68rem; text-align: center; }
+.ptab:hover { border-color: var(--sub); }
+.ptab[aria-selected="true"] { border-width: 2px; padding: 10.5px 9.5px; }
+.ptab[data-policy="sum"][aria-selected="true"] { border-color: var(--blue); color: var(--blue); }
+.ptab[data-policy="minimax"][aria-selected="true"] { border-color: var(--red); color: var(--red); }
+.ptab[data-policy="cost"][aria-selected="true"] { border-color: var(--green); color: var(--green); }
+
+.candidates { display: grid; gap: 10px; }
+.cand {
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+.cand { cursor: pointer; }
+.cand:hover { border-color: #cdd2c9; }
+/* 表情を出している候補を淡く示す。順位の強調とは別の軸。 */
+.cand.focused { background: #f4f8fd; border-color: #b9cae4; }
+/* 地図と表情はこの候補のものなので、リストを送っても画面から出さない。
+   下へ送れば見出しの下に、上へ戻せば下端に貼り付く。
+   見出しの高さは中身で変わるので JS から --list-head-h に入れている。 */
+.cand.focused {
+  position: sticky;
+  top: calc(57px + var(--list-head-h, 166px));
+  bottom: 12px;
+  z-index: 5;
+  box-shadow: 0 6px 20px rgba(32, 36, 43, 0.09);
+}
+
+/* その基準での最良だけ一回り大きくする。順位の数字は出さない。 */
+.cand.top { padding: 20px 22px; }
+.cand.top .cand-name { font-size: 1.3rem; }
+.cand.top .metrics { font-size: 0.85rem; }
+
+.cand-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cand-name { font-size: 1rem; font-weight: 700; }
+.cand-pick {
+  flex: none;
+  padding: 2px 12px;
+  border-radius: 999px;
+  background: var(--red);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.metrics { display: flex; flex-wrap: wrap; gap: 14px; margin: 6px 0 10px; font-size: 0.8rem; color: var(--sub); }
+.metrics b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.bars { display: grid; gap: 6px; }
+.bar { display: grid; grid-template-columns: 128px 1fr 128px; gap: 10px; align-items: center; font-size: 0.72rem; color: var(--sub); }
+.bar .who { display: flex; align-items: baseline; gap: 5px; min-width: 0; color: var(--ink); font-size: 0.78rem; }
+.bar .who small { color: var(--sub); font-size: 0.7rem; white-space: nowrap; }
+.bar .track { background: var(--paper); border-radius: 4px; overflow: hidden; height: 8px; }
+.bar .fill { display: block; height: 100%; background: var(--blue); border-radius: 4px; }
+.bar:first-child .fill { background: var(--red); }
+
+.figures { font-variant-numeric: tabular-nums; }
+
+/* ------------------------------------------------------------ 表情 */
+
+/* 誰がどれだけ損をしているかを、数字より先に伝える面。 */
+.faces {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 10px 4px;
+  padding: 14px 8px 12px;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+}
+.face { margin: 0; text-align: center; }
+.person { display: block; width: 100%; max-width: 50px; height: auto; margin: 0 auto; }
+.face figcaption {
+  margin-top: 2px;
+  font-size: 0.76rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.face.m-red figcaption { color: var(--red); font-weight: 700; }
+
+/* ------------------------------------------------------------ トースト */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  z-index: 50;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  box-shadow: 0 6px 20px rgba(32, 36, 43, 0.2);
+}
+.toast.bad { background: var(--red); }
+
+/* ------------------------------------------------------------ 狭い画面 */
+
+/* 3カラムに足りない幅では並べても窮屈なだけなので、地図と様子を畳んで候補だけ
+   を出す。候補を押すと、その候補と地図と様子をひとつの面へまとめて開く。 */
+@media (max-width: 1080px) {
+  .layout { grid-template-columns: 1fr; }
+  .map-col, .faces-col { display: none; }
+  .list-col { grid-column: 1; grid-row: 1; }
+  .cand.focused { position: static; box-shadow: none; }
+
+  body[data-sheet] .sheet-back {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 16;
+    background: rgba(32, 36, 43, 0.45);
+  }
+  /* 面の右上の角にひっかける。中に置くと中身の1行目を避けて回るので、
+     角をまたいで外へはみ出させる。面は中央寄せなので幅から割り出す。 */
+  body[data-sheet] .sheet-close {
+    display: block;
+    position: fixed;
+    top: 70px;
+    left: 50%;
+    margin-left: calc(min(560px, 100vw - 32px) / 2 - 24px);
+    z-index: 20;
+    width: 36px; height: 36px;
+    border: 1.5px solid var(--line);
+    border-radius: 50%;
+    background: var(--paper);
+    box-shadow: 0 2px 10px rgba(32, 36, 43, 0.18);
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  /* 面そのものは3カラムの入れ物を持ち上げて作る。DOMから動かすと地図が
+     作り直しになるので、要素はどれも元の場所に置いたまま。 */
+  body[data-sheet] .layout {
+    position: fixed;
+    top: 86px; bottom: 40px;
+    /* タブレット幅で端まで広げると地図が横に間延びする。中央に置いて頭を打つ */
+    left: 50%; right: auto;
+    width: min(560px, calc(100vw - 32px));
+    transform: translateX(-50%);
+    z-index: 18;
+    display: flex;
+    flex-direction: column;
+    /* 3カラムの align-items: start が縦並びだと横幅の縮みになる */
+    align-items: stretch;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+    background: var(--paper);
+    border: 1.5px solid var(--line);
+    border-radius: 14px;
+  }
+  /* 地図・様子・名前の順。一画面に収めたいので、どれも詰めて置く */
+  body[data-sheet] .map-col { order: 1; display: block; }
+  body[data-sheet] .faces-col { order: 2; display: block; }
+  body[data-sheet] .list-col { order: 3; }
+  /* 3カラムのときの縦スクロールは面の中では不要。面ごと送る */
+  body[data-sheet] .col {
+    border: 0;
+    padding: 10px 14px;
+    /* 3カラムのときは列ごとに貼り付いて縦に送る。面の中では素直に積む */
+    position: static;
+    overflow: visible;
+    max-height: none;
+  }
+  body[data-sheet] .block-head { margin-bottom: 6px; }
+  /* 画面の高さに合わせて縮める。3人ぶんなら送らずに収まる */
+  body[data-sheet] .map { height: clamp(150px, 26vh, 220px); }
+  body[data-sheet] .person { max-width: 38px; }
+  body[data-sheet] .faces { padding: 10px 6px 8px; gap: 8px 4px; }
+  /* 押した候補だけを見せる。基準タブと他の候補は後ろのリストに残す */
+  body[data-sheet] .list-head, body[data-sheet] .cand { display: none; }
+  body[data-sheet] .cand.focused {
+    display: block;
+    background: none;
+    border: 0;
+    padding: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .modal { padding: 70px 14px 32px; }
+  .modal-card { padding: 20px 18px 22px; }
+  .member { flex-wrap: wrap; }
+  .bar { grid-template-columns: 110px 1fr; }
+  .bar > span:last-child { grid-column: 1 / -1; }
+  /* 基準の説明文は折り返すと見出しが3行ぶんに膨らむ。狭い画面では名前だけ */
+  .ptab { flex: 1 1 0; padding: 9px 4px; }
+  .ptab small { display: none; }
+}

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- ページの署名と同じ図。散らばった路線が1点に集まる。
+       16px でも「線が集まる駅」に見えるよう、線は3本まで。 -->
+  <rect width="32" height="32" rx="7" fill="#fbfbf8"/>
+  <g fill="none" stroke-width="4" stroke-linecap="round">
+    <path d="M4 8 L14 14" stroke="#1867c0"/>
+    <path d="M4 24 L14 18" stroke="#0c8f5a"/>
+    <path d="M28 16 L18 16" stroke="#e5432e"/>
+  </g>
+  <circle cx="16" cy="16" r="6.5" fill="#20242b"/>
+</svg>

@@ -8,9 +8,7 @@ from __future__ import annotations
 
 import logging
 
-from app.ports.calendar import CalendarPort
 from app.ports.llm import LlmPort
-from app.ports.rooms import RoomsPort
 from app.ports.transit import TransitPort
 from app.repositories.base import Repository
 from app.settings import Settings
@@ -32,26 +30,6 @@ def build_transit(settings: Settings) -> TransitPort:
     from app.adapters.mock.transit import MockTransitAdapter
 
     return MockTransitAdapter()
-
-
-def build_rooms(settings: Settings) -> RoomsPort:
-    from app.adapters.mock.rooms import MockRoomsAdapter
-
-    return MockRoomsAdapter()
-
-
-def build_calendar(settings: Settings) -> CalendarPort:
-    if settings.calendar_provider == "google":
-        try:
-            from app.adapters.google.calendar import GoogleCalendarAdapter
-
-            return GoogleCalendarAdapter(settings.google_calendar_id)
-        except Exception:  # noqa: BLE001
-            logger.warning("Google Calendar の初期化に失敗。モックで継続します", exc_info=True)
-
-    from app.adapters.mock.calendar import MockCalendarAdapter
-
-    return MockCalendarAdapter()
 
 
 def build_llm(settings: Settings) -> LlmPort:

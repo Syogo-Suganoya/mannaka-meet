@@ -1,75 +1,173 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>マンナカ — N人会議場所最適化</title>
-<link rel="stylesheet" href="/static/style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>マンナカ — N人会議場所最適化エージェント</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.2.6/swiper-bundle.min.css">
+<link rel="stylesheet" href="/static/landing.css">
 </head>
-<body>
-<header>
-  <h1>マンナカ</h1>
-  <p class="tagline">「いつも本社」を、公平性ポリシー付きの最適化に置き換える</p>
-  <div id="providers" class="providers"></div>
-</header>
+<body class="landing">
 
-<main>
-  <section class="panel">
-    <h2>1. チャットで依頼 <span class="hint">全員が見る場。個人の出発駅は出ません</span></h2>
-    <div class="row">
-      <button id="seed-btn" class="ghost">デモ参加者を登録</button>
-      <label class="inline">発言者
-        <select id="author-select"></select>
-      </label>
+<header class="hero"><div class="wrap">
+  <p class="kicker">N人の待ち合わせに</p>
+  <h1>マンナカ<span class="dot">.</span></h1>
+  <p class="tagline">
+    <strong>みんなの中心がわかる！</strong>
+    出発駅を入れるだけで、いちばんフェアな集合駅が出る。
+  </p>
+
+  <!-- 署名：6人の出発駅が1点に収束する路線図 -->
+  <svg class="map" width="760" height="250" viewBox="0 0 760 250" role="img"
+       aria-label="立川・三鷹・横浜・千葉・船橋・大宮の6人が東京に集まる図。いちばん遠い人で69分。">
+    <path d="M60 40 C 190 55 300 95 366 116" fill="none" stroke="#1867c0" stroke-width="8" stroke-linecap="round"/>
+    <path d="M60 125 C 180 125 290 122 364 122" fill="none" stroke="#1867c0" stroke-width="8" stroke-linecap="round"/>
+    <path d="M60 210 C 190 195 300 150 366 130" fill="none" stroke="#0c8f5a" stroke-width="8" stroke-linecap="round"/>
+    <path d="M700 40 C 570 55 460 95 394 116" fill="none" stroke="#e8a400" stroke-width="8" stroke-linecap="round"/>
+    <path d="M700 125 C 580 125 470 122 396 122" fill="none" stroke="#e5432e" stroke-width="8" stroke-linecap="round"/>
+    <path d="M700 210 C 570 195 460 150 394 130" fill="none" stroke="#e5432e" stroke-width="8" stroke-linecap="round"/>
+
+    <circle cx="60" cy="40" r="10" fill="#fff" stroke="#1867c0" stroke-width="5"/>
+    <circle cx="60" cy="125" r="10" fill="#fff" stroke="#1867c0" stroke-width="5"/>
+    <circle cx="60" cy="210" r="10" fill="#fff" stroke="#0c8f5a" stroke-width="5"/>
+    <circle cx="700" cy="40" r="10" fill="#fff" stroke="#e8a400" stroke-width="5"/>
+    <circle cx="700" cy="125" r="10" fill="#fff" stroke="#e5432e" stroke-width="5"/>
+    <circle cx="700" cy="210" r="10" fill="#fff" stroke="#e5432e" stroke-width="5"/>
+
+    <text x="78" y="34" font-size="12.5" fill="#69707d">立川</text>
+    <text x="78" y="119" font-size="12.5" fill="#69707d">三鷹</text>
+    <text x="78" y="232" font-size="12.5" fill="#69707d">横浜</text>
+    <text x="682" y="34" font-size="12.5" fill="#69707d" text-anchor="end">大宮</text>
+    <text x="682" y="119" font-size="12.5" fill="#69707d" text-anchor="end">船橋</text>
+    <text x="682" y="232" font-size="12.5" fill="#69707d" text-anchor="end">千葉</text>
+
+    <circle class="pulse" cx="380" cy="123" r="26" fill="none" stroke="#e5432e" stroke-width="3" opacity=".6">
+      <animate attributeName="r" values="26;42" dur="2.4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values=".6;0" dur="2.4s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="380" cy="123" r="26" fill="#20242b"/>
+    <text x="380" y="129" font-size="13" fill="#fff" text-anchor="middle" font-weight="bold">東京</text>
+    <text x="380" y="182" font-size="12.5" fill="#e5432e" text-anchor="middle">いちばん遠い人 69分</text>
+  </svg>
+  <p class="map-caption">「バランスよく」で選ぶとここ。基準を変えれば、集まる駅も変わる。</p>
+  <div class="actions">
+    <a class="btn primary" href="/app">アプリを開く</a>
+  </div>
+</div></header>
+
+<!-- ------------------------------------------------------------ 課題 -->
+<!-- ぼやきを路線網の上に駅として置く。並べると箇条書きになってしまう。 -->
+<section class="mapped">
+<svg class="bg-map" viewBox="0 0 1440 420" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+  <g fill="none" stroke="#e3e3dc" stroke-width="6" stroke-linecap="round">
+    <path d="M-40 90 C 320 140 520 60 860 110 S 1220 180 1480 110"/>
+    <path d="M-40 250 C 260 210 480 300 820 250 S 1200 190 1480 240"/>
+    <path d="M-40 380 C 320 350 600 400 900 350 S 1260 300 1480 350"/>
+    <path d="M380 -20 C 420 120 340 260 400 440"/>
+    <path d="M900 -20 C 950 140 870 280 930 440"/>
+  </g>
+  <g fill="#fbfbf8" stroke="#e3e3dc" stroke-width="4">
+    <circle cx="396" cy="104" r="9"/><circle cx="371" cy="256" r="9"/>
+    <circle cx="916" cy="112" r="9"/><circle cx="906" cy="246" r="9"/>
+    <circle cx="180" cy="118" r="7"/><circle cx="1180" cy="146" r="7"/>
+    <circle cx="640" cy="272" r="7"/><circle cx="1290" cy="330" r="7"/>
+  </g>
+</svg>
+<div class="wrap">
+  <h2 class="m-red">場所決め、いつも同じ人が損してない？</h2>
+  <ul class="gripes">
+    <li>なんとなく本社</li>
+    <li>中間地点ツールは2人まで</li>
+    <li>誰が損したか、誰も見てない</li>
+  </ul>
+</div></section>
+
+<!-- ------------------------------------------------------------ 公平性ポリシー -->
+<section><div class="wrap">
+  <h2 class="m-blue">基準は3つ。選ぶと集まる駅が変わる</h2>
+
+  <!-- キャラ選択。真ん中が選択中で、左右は控えに回る。送りは Swiper に任せる。 -->
+  <div class="picker">
+    <button type="button" class="picker-arrow" id="pick-prev" aria-label="前の基準">‹</button>
+    <div class="picks swiper">
+      <!-- 拡大縮小は中のカードにかける。スライド自体を縮めると
+           Swiper が幅を測り違えて送りが止まる。 -->
+      <div class="swiper-wrapper">
+        <div class="swiper-slide">
+          <button type="button" class="pick p-sum">
+            <h3>早い</h3>
+            <span class="station">新宿</span>
+            <p class="figures">いちばん遠い人 79分 ／ 差 37分</p>
+          </button>
+        </div>
+        <div class="swiper-slide">
+          <button type="button" class="pick p-minimax">
+            <h3>バランスよく</h3>
+            <span class="station">東京</span>
+            <p class="figures">いちばん遠い人 69分 ／ 差 27分</p>
+          </button>
+        </div>
+        <div class="swiper-slide">
+          <button type="button" class="pick p-cost">
+            <h3>安い</h3>
+            <span class="station">秋葉原</span>
+            <p class="figures">いちばん遠い人 73分 ／ 差 27分</p>
+          </button>
+        </div>
+      </div>
     </div>
-    <div id="chat" class="chat"></div>
-    <div class="row chat-input">
-      <textarea id="request-text" rows="2">@マンナカ 来週火曜14時、この6人で。2時間、ホワイトボードのある部屋で。いちばん遠い人の負担を減らしたい</textarea>
-      <button id="create-btn">送信</button>
-    </div>
-    <div id="participants" class="chips"></div>
-    <div id="meeting-summary" class="summary"></div>
-  </section>
+    <button type="button" class="picker-arrow" id="pick-next" aria-label="次の基準">›</button>
+  </div>
+  <p class="note">同じ6人・同じ日時。基準だけ入れ替えた結果。</p>
+</div></section>
 
-  <section class="panel">
-    <h2>2. 候補地 <span class="hint">どの基準で選んだかを常に明示します</span></h2>
-    <div class="row policies" id="policy-tabs">
-      <button data-policy="minimax" class="policy active">最大負担の平準化<small>minimax</small></button>
-      <button data-policy="sum" class="policy">合計移動時間最小<small>sum</small></button>
-      <button data-policy="cost" class="policy">総運賃最小<small>cost</small></button>
-    </div>
-    <p id="explanation" class="explanation"></p>
-    <div id="policy-diff" class="policy-diff"></div>
-    <div id="candidates" class="candidates"></div>
-  </section>
+<!-- ------------------------------------------------------------ 使い方 -->
+<section><div class="wrap">
+  <h2 class="m-green">使い方</h2>
 
-  <section class="panel">
-    <h2>3. 手配 <span class="hint">有料予約は主催者承認＋上限額</span></h2>
-    <div id="rooms" class="rooms"></div>
-    <div id="approval" class="approval"></div>
-  </section>
+  <ol class="route">
+    <li>
+      <b>名前と出発駅を入れる</b>
+      <small>ログインなし。もらうのは名前と駅だけ。</small>
+      <!-- スクショが入る。差し替えるときは中身をこの1行にする:
+           <img src="/static/shots/step1.png" alt="参加者と出発駅の入力フォーム"> -->
+      <figure class="shot"><figcaption>入力フォーム</figcaption></figure>
+    </li>
 
-  <section class="panel">
-    <h2>4. 配信・当日フォロー</h2>
-    <div class="row">
-      <button id="disrupt-btn" class="ghost">遅延を発生させる（デモ）</button>
-      <button id="followup-btn" class="ghost">運行状況を確認</button>
-    </div>
-    <div id="followup" class="followup"></div>
+    <li>
+      <b>基準を切り替えて見比べる</b>
+      <small>押すたび、選ばれる駅が変わる。</small>
+      <!-- スクショが入る:
+           <img src="/static/shots/step2.png" alt="候補地の一覧と基準タブ"> -->
+      <figure class="shot"><figcaption>候補地の一覧</figcaption></figure>
+    </li>
 
-    <h3>アプリ内通知 <span class="hint">本人にだけ届く。外部には一切送りません</span></h3>
-    <label class="inline">受信者
-      <select id="inbox-select"></select>
-    </label>
-    <div id="inbox" class="outbox"></div>
-  </section>
+    <li>
+      <b>地図と顔で受け取る</b>
+      <small>楽な人は万歳、いちばん重い人は赤くうなだれる。</small>
+      <!-- スクショが入る:
+           <img src="/static/shots/step3.png" alt="地図と参加者の表情"> -->
+      <figure class="shot"><figcaption>地図とみんなの様子</figcaption></figure>
+    </li>
+  </ol>
+</div></section>
 
-  <section class="panel">
-    <h2>5. 監査ログ <span class="hint">ポリシー選択・支出承認・リスケの証跡</span></h2>
-    <div id="audit" class="audit"></div>
-  </section>
-</main>
+<!-- ------------------------------------------------------------ CTA -->
+<section class="cta"><div class="wrap">
+  <h2>さわってみる</h2>
+  <div class="actions">
+    <a class="btn primary" href="/app">アプリを開く</a>
+  </div>
+</div></section>
 
-<script src="/static/app.js"></script>
+<footer><div class="wrap">
+  マンナカ — Google Cloud Japan AI Hackathon vol.5
+</div></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.2.6/swiper-bundle.min.js"></script>
+<script src="/static/landing.js"></script>
+
 </body>
 </html>

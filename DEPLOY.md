@@ -248,7 +248,6 @@ docker push asia-northeast1-docker.pkg.dev/mannaka-meet/mannaka-meet/app:v1
 | `GOOGLE_CLOUD_PROJECT` | `mannaka-meet` |
 | `LLM_PROVIDER` | `gemini` |
 | `TRANSIT_PROVIDER` | `ekispert` |
-| `AGENT_SPEND_LIMIT_YEN` | `5000` |
 
 **シークレット**（「シークレットを参照」）
 
@@ -357,7 +356,8 @@ gcloud iam service-accounts add-iam-policy-binding \
 | 見るところ | 期待する結果 |
 |---|---|
 | `/healthz` | `providers` が意図したモードになっている |
-| `/` | デモUIが開き、「デモ参加者を登録」が動く |
+| `/` | トップページ（機能と使い方）が開く |
+| `/app` | 入力フォームが出て、参加者を入れると候補地が並ぶ |
 | `/docs` | OpenAPI ドキュメントが出る |
 | Cloud Logging | `mannaka 起動: providers=...` が出ている |
 

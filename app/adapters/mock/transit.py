@@ -10,31 +10,32 @@ import asyncio
 from datetime import datetime, timedelta
 
 from app.ports.transit import TransitPort
-from app.domain.models import RouteLeg, ServiceDisruption
+from app.domain.models import RouteLeg
 
-# 駅 -> (エリア名, 主要路線, 都心中心からの相対座標km)
-# 座標は東京駅を原点としたごく粗い近似。所要時間の単調性を担保するために使う。
-STATIONS: dict[str, tuple[str, list[str], float, float]] = {
-    "東京": ("丸の内", ["JR中央線", "JR山手線"], 0.0, 0.0),
-    "新宿": ("新宿", ["JR中央線", "JR山手線", "小田急線"], -6.4, 1.2),
-    "渋谷": ("渋谷", ["JR山手線", "東急東横線", "東京メトロ半蔵門線"], -6.0, -3.4),
-    "品川": ("品川", ["JR東海道線", "JR山手線", "京急線"], -1.6, -6.4),
-    "池袋": ("池袋", ["JR山手線", "東武東上線", "西武池袋線"], -5.6, 4.8),
-    "上野": ("上野", ["JR山手線", "JR常磐線"], 1.4, 4.0),
-    "秋葉原": ("秋葉原", ["JR山手線", "つくばエクスプレス"], 0.9, 1.9),
-    "大手町": ("大手町", ["東京メトロ東西線", "東京メトロ丸ノ内線"], -0.4, 0.6),
-    "北千住": ("北千住", ["JR常磐線", "東武スカイツリーライン"], 3.2, 8.2),
-    "横浜": ("横浜", ["JR東海道線", "東急東横線", "京急線"], -6.0, -25.0),
-    "武蔵小杉": ("武蔵小杉", ["JR南武線", "東急東横線"], -6.5, -13.0),
-    "立川": ("立川", ["JR中央線", "JR南武線"], -32.0, 3.0),
-    "大宮": ("大宮", ["JR京浜東北線", "JR埼京線"], -3.0, 27.0),
-    "千葉": ("千葉", ["JR総武線"], 32.0, 3.0),
-    "船橋": ("船橋", ["JR総武線", "東武野田線"], 20.0, 3.5),
-    "町田": ("町田", ["JR横浜線", "小田急線"], -28.0, -14.0),
-    "川崎": ("川崎", ["JR東海道線", "JR南武線"], -4.0, -16.0),
-    "三鷹": ("三鷹", ["JR中央線"], -17.0, 2.0),
-    "赤羽": ("赤羽", ["JR京浜東北線", "JR埼京線"], -2.0, 9.0),
-    "錦糸町": ("錦糸町", ["JR総武線", "東京メトロ半蔵門線"], 4.6, 1.6),
+# 駅 -> (エリア名, 主要路線, 相対km(東西, 南北), 実座標(緯度, 経度))
+# 相対kmは東京駅を原点としたごく粗い近似で、所要時間の単調性を担保するために使う。
+# 実座標は地図に打つためだけのもので、所要・運賃の計算には一切使わない。
+STATIONS: dict[str, tuple[str, list[str], float, float, float, float]] = {
+    "東京": ("丸の内", ["JR中央線", "JR山手線"], 0.0, 0.0, 35.6812, 139.7671),
+    "新宿": ("新宿", ["JR中央線", "JR山手線", "小田急線"], -6.4, 1.2, 35.6896, 139.7006),
+    "渋谷": ("渋谷", ["JR山手線", "東急東横線", "東京メトロ半蔵門線"], -6.0, -3.4, 35.6580, 139.7016),
+    "品川": ("品川", ["JR東海道線", "JR山手線", "京急線"], -1.6, -6.4, 35.6285, 139.7387),
+    "池袋": ("池袋", ["JR山手線", "東武東上線", "西武池袋線"], -5.6, 4.8, 35.7295, 139.7109),
+    "上野": ("上野", ["JR山手線", "JR常磐線"], 1.4, 4.0, 35.7141, 139.7774),
+    "秋葉原": ("秋葉原", ["JR山手線", "つくばエクスプレス"], 0.9, 1.9, 35.6984, 139.7731),
+    "大手町": ("大手町", ["東京メトロ東西線", "東京メトロ丸ノ内線"], -0.4, 0.6, 35.6866, 139.7664),
+    "北千住": ("北千住", ["JR常磐線", "東武スカイツリーライン"], 3.2, 8.2, 35.7497, 139.8050),
+    "横浜": ("横浜", ["JR東海道線", "東急東横線", "京急線"], -6.0, -25.0, 35.4657, 139.6224),
+    "武蔵小杉": ("武蔵小杉", ["JR南武線", "東急東横線"], -6.5, -13.0, 35.5765, 139.6596),
+    "立川": ("立川", ["JR中央線", "JR南武線"], -32.0, 3.0, 35.6979, 139.4137),
+    "大宮": ("大宮", ["JR京浜東北線", "JR埼京線"], -3.0, 27.0, 35.9063, 139.6238),
+    "千葉": ("千葉", ["JR総武線"], 32.0, 3.0, 35.6132, 140.1136),
+    "船橋": ("船橋", ["JR総武線", "東武野田線"], 20.0, 3.5, 35.7016, 139.9852),
+    "町田": ("町田", ["JR横浜線", "小田急線"], -28.0, -14.0, 35.5427, 139.4467),
+    "川崎": ("川崎", ["JR東海道線", "JR南武線"], -4.0, -16.0, 35.5308, 139.6970),
+    "三鷹": ("三鷹", ["JR中央線"], -17.0, 2.0, 35.7027, 139.5605),
+    "赤羽": ("赤羽", ["JR京浜東北線", "JR埼京線"], -2.0, 9.0, 35.7778, 139.7207),
+    "錦糸町": ("錦糸町", ["JR総武線", "東京メトロ半蔵門線"], 4.6, 1.6, 35.6969, 139.8144),
 }
 
 # 乗換の起きやすさ: ハブ度が高いほど乗換が少なく済む
@@ -78,10 +79,6 @@ FARE_FACTOR: dict[str, float] = {
     "三鷹": 0.86, "船橋": 0.82, "町田": 0.82, "立川": 0.80, "千葉": 0.78,
 }
 
-# 当日実況のモック。ここを実APIに差し替えると本物の運行情報になる。
-MOCK_DISRUPTIONS: dict[str, ServiceDisruption] = {}
-
-
 def _distance_km(a: str, b: str) -> float:
     ax, ay = STATIONS[a][2], STATIONS[a][3]
     bx, by = STATIONS[b][2], STATIONS[b][3]
@@ -97,6 +94,16 @@ def _known(station: str) -> str:
 
 class MockTransitAdapter(TransitPort):
     name = "mock"
+
+    async def known_stations(self) -> set[str]:
+        return set(STATIONS)
+
+    async def coordinates(self, stations: list[str]) -> dict[str, tuple[float, float]]:
+        return {
+            name: (STATIONS[name][4], STATIONS[name][5])
+            for name in stations
+            if name in STATIONS
+        }
 
     async def candidate_hubs(
         self, origin_stations: list[str], *, limit: int = 6
@@ -133,12 +140,7 @@ class MockTransitAdapter(TransitPort):
             duration = int(round(km * 1.9 / express + 8 + transfers * 5))
             fare = int(round((140 + km * 13.5) * fare_factor / 10) * 10)
 
-        # 遅延中の路線を使う場合は所要時間に反映
         lines = sorted(set(STATIONS[src][1]) | set(STATIONS[dst][1]))
-        delay = sum(
-            d.delay_minutes for line, d in MOCK_DISRUPTIONS.items() if line in lines
-        )
-        duration += delay
 
         depart_at = arrive_by - timedelta(minutes=duration)
         return RouteLeg(
@@ -152,16 +154,3 @@ class MockTransitAdapter(TransitPort):
             arrive_at=arrive_by,
             lines=lines[:3],
         )
-
-    async def disruptions(self, lines: list[str]) -> list[ServiceDisruption]:
-        return [MOCK_DISRUPTIONS[line] for line in lines if line in MOCK_DISRUPTIONS]
-
-    # -- デモ用の操作（実APIでは存在しない） ------------------------------
-
-    @staticmethod
-    def inject_disruption(disruption: ServiceDisruption) -> None:
-        MOCK_DISRUPTIONS[disruption.line] = disruption
-
-    @staticmethod
-    def clear_disruptions() -> None:
-        MOCK_DISRUPTIONS.clear()

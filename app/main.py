@@ -50,13 +50,32 @@ async def healthz():
         "status": "ok",
         "env": container.settings.env,
         "providers": container.providers(),
-        "spend_limit_yen": container.settings.agent_spend_limit_yen,
     }
 
 
+class RevalidatingStatics(StaticFiles):
+    """毎回 ETag で検証させる。
+
+    Cache-Control が無いとブラウザが独自判断でキャッシュし、デプロイ後も
+    古い CSS / JS を掴み続ける。中身が変わっていなければ 304 が返るだけなので
+    転送量はほぼ増えない。
+    """
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 if WEB_DIR.exists():
-    app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
+    app.mount("/static", RevalidatingStatics(directory=WEB_DIR), name="static")
 
     @app.get("/", include_in_schema=False)
     async def index():
+        """トップページ。機能と使い方の説明。"""
         return FileResponse(WEB_DIR / "index.html")
+
+    @app.get("/app", include_in_schema=False)
+    async def application():
+        """アプリ本体。参加者を入れて候補地を見比べる。"""
+        return FileResponse(WEB_DIR / "app.html")

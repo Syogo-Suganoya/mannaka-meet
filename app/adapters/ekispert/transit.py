@@ -13,7 +13,7 @@ from datetime import datetime
 
 import httpx
 
-from app.domain.models import RouteLeg, ServiceDisruption
+from app.domain.models import RouteLeg
 from app.ports.transit import TransitPort
 
 BASE_URL = "https://api.ekispert.jp/v1/json"
@@ -126,21 +126,3 @@ class EkispertTransitAdapter(TransitPort):
             arrive_at=arrive_by,
             lines=lines[:3],
         )
-
-    async def disruptions(self, lines: list[str]) -> list[ServiceDisruption]:
-        out: list[ServiceDisruption] = []
-        for line in lines:
-            data = await self._get("/operationLine", {"name": line})
-            infos = data.get("ResultSet", {}).get("Information", [])
-            if isinstance(infos, dict):
-                infos = [infos]
-            for info in infos:
-                out.append(
-                    ServiceDisruption(
-                        line=line,
-                        status=info.get("Status", "unknown"),
-                        delay_minutes=int(info.get("DelayTime", 0) or 0),
-                        detail=info.get("Text", ""),
-                    )
-                )
-        return out

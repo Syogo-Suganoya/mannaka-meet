@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 
-from app.domain.models import AuditLog, ChatMessage, Meeting, Notification, UserProfile
+from app.domain.models import AuditLog, Meeting
 from app.repositories.base import Repository
 
 
@@ -23,28 +23,6 @@ class FirestoreRepository(Repository):
 
         self._db = firestore.Client(project=project)
         self._filter = FieldFilter
-
-    # -- users -----------------------------------------------------------
-
-    async def save_user(self, user: UserProfile) -> UserProfile:
-        await asyncio.to_thread(
-            lambda: self._db.collection("users")
-            .document(user.uid)
-            .set({"profile": user.model_dump(mode="json")})
-        )
-        return user
-
-    async def get_user(self, uid: str) -> UserProfile | None:
-        doc = await asyncio.to_thread(
-            lambda: self._db.collection("users").document(uid).get()
-        )
-        if not doc.exists:
-            return None
-        return UserProfile.model_validate(doc.to_dict()["profile"])
-
-    async def list_users(self) -> list[UserProfile]:
-        docs = await asyncio.to_thread(lambda: list(self._db.collection("users").stream()))
-        return [UserProfile.model_validate(d.to_dict()["profile"]) for d in docs]
 
     # -- meetings --------------------------------------------------------
 
@@ -63,13 +41,6 @@ class FirestoreRepository(Repository):
         if not doc.exists:
             return None
         return Meeting.model_validate(doc.to_dict())
-
-    async def list_meetings(self) -> list[Meeting]:
-        docs = await asyncio.to_thread(
-            lambda: list(self._db.collection("meetings").stream())
-        )
-        meetings = [Meeting.model_validate(d.to_dict()) for d in docs]
-        return sorted(meetings, key=lambda m: m.created_at, reverse=True)
 
     # -- audit -----------------------------------------------------------
 
@@ -91,60 +62,3 @@ class FirestoreRepository(Repository):
         docs = await asyncio.to_thread(_query)
         logs = [AuditLog.model_validate(d.to_dict()) for d in docs]
         return sorted(logs, key=lambda log: log.created_at)
-
-    # -- messages（自作チャット） -----------------------------------------
-
-    async def append_message(self, message: ChatMessage) -> ChatMessage:
-        await asyncio.to_thread(
-            lambda: self._db.collection("messages")
-            .document(message.message_id)
-            .set(message.model_dump(mode="json"))
-        )
-        return message
-
-    async def list_messages(self, room: str, *, limit: int = 100) -> list[ChatMessage]:
-        docs = await asyncio.to_thread(
-            lambda: list(
-                self._db.collection("messages")
-                .where(filter=self._filter("room", "==", room))
-                .stream()
-            )
-        )
-        messages = [ChatMessage.model_validate(d.to_dict()) for d in docs]
-        messages.sort(key=lambda m: m.created_at)
-        return messages[-limit:]
-
-    # -- notifications（アプリ内通知） ------------------------------------
-
-    async def append_notification(self, notification: Notification) -> Notification:
-        await asyncio.to_thread(
-            lambda: self._db.collection("notifications")
-            .document(notification.notification_id)
-            .set(notification.model_dump(mode="json"))
-        )
-        return notification
-
-    async def list_notifications(
-        self, uid: str, *, unread_only: bool = False
-    ) -> list[Notification]:
-        # 絞り込みは uid だけにして、未読判定は Python 側で行う。
-        # uid と read の複合クエリは本番 Firestore で複合インデックスを要求するため。
-        docs = await asyncio.to_thread(
-            lambda: list(
-                self._db.collection("notifications")
-                .where(filter=self._filter("uid", "==", uid))
-                .stream()
-            )
-        )
-        items = [Notification.model_validate(d.to_dict()) for d in docs]
-        if unread_only:
-            items = [n for n in items if not n.read]
-        return sorted(items, key=lambda n: n.created_at, reverse=True)
-
-    async def mark_notification_read(self, notification_id: str) -> Notification | None:
-        ref = self._db.collection("notifications").document(notification_id)
-        doc = await asyncio.to_thread(ref.get)
-        if not doc.exists:
-            return None
-        await asyncio.to_thread(lambda: ref.update({"read": True}))
-        return Notification.model_validate({**doc.to_dict(), "read": True})

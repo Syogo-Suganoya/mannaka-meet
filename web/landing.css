@@ -1,0 +1,314 @@
+/* トップページ（機能と使い方）。
+   デザインは企画LP（lp/06_mannaka.html）の路線図モチーフを踏襲する。
+   デモUI（style.css）とは別系統なので、ここは単独で完結させる。 */
+
+:root {
+  --paper: #fbfbf8;
+  --ink: #20242b;
+  --sub: #69707d;
+  --line: #e3e3dc;
+  --red: #e5432e;
+  --blue: #1867c0;
+  --green: #0c8f5a;
+  --yellow: #e8a400;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body.landing {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "IBM Plex Sans JP", -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+  line-height: 1.9;
+}
+
+.mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace; }
+
+.wrap { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+
+/* ------------------------------------------------------------ ヒーロー */
+
+.hero { padding: 60px 0 26px; text-align: center; }
+
+.kicker { font-size: 0.74rem; letter-spacing: 0.28em; color: var(--sub); }
+
+.hero h1 {
+  font-size: 3.2rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin: 0.15em 0;
+}
+.hero h1 .dot { color: var(--red); }
+
+.tagline { color: var(--sub); max-width: 600px; margin: 8px auto 0; font-size: 0.95rem; }
+/* 一言目だけ大きく。ここがこのページの主張。 */
+.tagline strong {
+  display: block;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 1.35rem;
+  line-height: 1.5;
+}
+
+/* 路線図＝このページの署名。全員の出発駅が1点に収束する図。 */
+.map { display: block; margin: 22px auto 0; max-width: 100%; height: auto; }
+
+.map-caption {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--sub);
+}
+
+/* ------------------------------------------------------------ セクション */
+
+section { padding: 50px 0; border-top: 1px solid var(--line); }
+
+section h2 {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+/* 見出しの目印は路線の線分。図と同じ太さ・同じ丸端にして揃える。 */
+section h2[class^="m-"]::before {
+  content: "";
+  width: 30px;
+  height: 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.m-red::before { background: var(--red); }
+.m-blue::before { background: var(--blue); }
+.m-green::before { background: var(--green); }
+
+/* 図と表の下に置く一行。説明ではなく、何を見ているかの札。 */
+.note { margin-top: 12px; font-size: 0.8rem; color: var(--sub); }
+
+/* ------------------------------------------------------------ ぼやき */
+
+/* 一言だけを3つ。箇条書きにせず、路線網の上に駅として散らす。 */
+.gripes {
+  list-style: none;
+  position: relative;
+  height: 270px;
+  margin-top: 20px;
+}
+.gripes li {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 14px 26px 14px 20px;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.gripes li:nth-child(1) { left: 1%; top: 8%; }
+.gripes li:nth-child(2) { left: 26%; top: 58%; }
+.gripes li:nth-child(3) { left: 55%; top: 26%; }
+/* 頭の丸は路線図の駅と同じ描き方 */
+.gripes li::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4.5px solid var(--red);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.gripes li:nth-child(2)::before { border-color: var(--blue); }
+.gripes li:nth-child(3)::before { border-color: var(--green); }
+
+/* ------------------------------------------------------------ 公平性ポリシー */
+
+/* 背景の路線網。読ませるものではないので、線の色そのままで薄く敷く。 */
+.mapped { position: relative; overflow: hidden; }
+.bg-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.mapped .wrap { position: relative; }
+
+/* キャラ選択。真ん中が選択中で大きく、左右は控えとして小さく。 */
+.picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 22px 0 8px;
+}
+/* 枠。はみ出したカードはここで切る。送りは Swiper が持つ。 */
+.picks {
+  flex: 1;
+  min-width: 0;
+  /* 大きくなったカードの影を切らないぶんの逃げ */
+  padding: 26px 0;
+  margin: -26px 0;
+}
+.picks .swiper-wrapper { align-items: center; }
+/* 幅は Swiper が slidesPerView から決める。高さだけ中身に合わせる。 */
+.picks .swiper-slide { height: auto; }
+
+.pick {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-top-width: 5px;
+  border-radius: 10px;
+  padding: 18px 20px;
+  /* 控えは小さく引っ込む。選ぶと前に出る。 */
+  transform: scale(0.82);
+  opacity: 0.5;
+  transition: transform 0.22s ease, opacity 0.22s ease, box-shadow 0.22s ease;
+}
+.swiper-slide-active .pick {
+  transform: scale(1);
+  opacity: 1;
+  box-shadow: 0 10px 30px rgba(32, 36, 43, 0.12);
+}
+.pick:hover { opacity: 0.85; }
+.swiper-slide-active .pick:hover { opacity: 1; }
+
+.pick.p-sum { border-top-color: var(--blue); }
+.pick.p-minimax { border-top-color: var(--red); }
+.pick.p-cost { border-top-color: var(--green); }
+
+.pick h3 { font-size: 1.05rem; margin: 0 0 10px; }
+.pick .station {
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  display: block;
+  line-height: 1.4;
+}
+.swiper-slide-active .pick .station { font-size: 2rem; }
+.pick.p-sum .station { color: var(--blue); }
+.pick.p-minimax .station { color: var(--red); }
+.pick.p-cost .station { color: var(--green); }
+.pick .figures { color: var(--sub); font-size: 0.82rem; }
+
+.picker-arrow {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1.5px solid var(--line);
+  background: #fff;
+  color: var(--sub);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.picker-arrow:hover { border-color: var(--ink); color: var(--ink); }
+
+/* ------------------------------------------------------------ 使い方＝路線図の線 */
+
+.route { list-style: none; max-width: 700px; margin-top: 18px; }
+
+.route li { position: relative; padding: 0 0 32px 52px; }
+.route li::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 6px;
+  bottom: -6px;
+  width: 8px;
+  background: var(--blue);
+  border-radius: 4px;
+}
+.route li:last-child::before { bottom: auto; height: 20px; }
+.route li::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  border: 5px solid var(--blue);
+}
+
+.route b { display: block; font-size: 1.02rem; }
+.route small { color: var(--sub); display: block; font-size: 0.88rem; }
+
+/* スクショの置き場。<img> に差し替えても枠と余白はそのまま効く。 */
+.shot {
+  margin: 12px 0 0;
+  max-width: 520px;
+  aspect-ratio: 16 / 10;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  border: 1.5px dashed var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.shot figcaption { color: var(--sub); font-size: 0.82rem; }
+.shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.shot:has(img) { border-style: solid; padding: 0; }
+
+/* ------------------------------------------------------------ ボタン */
+
+.actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 24px; }
+
+.btn {
+  display: inline-block;
+  padding: 11px 26px;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1.5px solid var(--ink);
+}
+.btn.primary { background: var(--ink); color: var(--paper); }
+.btn.primary:hover { background: var(--red); border-color: var(--red); }
+.btn.ghost { color: var(--ink); }
+.btn.ghost:hover { border-color: var(--blue); color: var(--blue); }
+
+.cta { text-align: center; }
+.cta h2 { justify-content: center; }
+
+footer {
+  padding: 36px 0 48px;
+  text-align: center;
+  border-top: 1px solid var(--line);
+  color: var(--sub);
+  font-size: 0.85rem;
+}
+
+a:focus-visible, .btn:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+}
+
+@media (max-width: 640px) {
+  .hero h1 { font-size: 2.2rem; }
+  section { padding: 40px 0; }
+  .route li { padding-left: 44px; }
+  /* 縦一列で散らすと、ただの不揃いにしか見えない */
+  .gripes { position: static; height: auto; display: grid; gap: 10px; justify-items: start; }
+  .gripes li { position: static; white-space: normal; }
+  /* 幅に対してカードが大きいので、送り幅だけ詰める */
+  .swiper-slide:not(.swiper-slide-active) .pick { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse { display: none; }
+}
