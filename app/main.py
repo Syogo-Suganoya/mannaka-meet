@@ -42,8 +42,11 @@ app = FastAPI(
 app.include_router(router, prefix="/api")
 
 
-@app.get("/healthz", tags=["ops"])
-async def healthz():
+# /healthz にはしない。Cloud Run の手前の Google フロントエンドがこのパスを
+# 横取りして、コンテナに届く前に HTML の 404 を返す（実測で確認済み）。
+# /health / /readyz など他のパスは素通しされる。
+@app.get("/health", tags=["ops"])
+async def health():
     """どのプロバイダ（モック / 実API）で動いているかを明示する。"""
     container = get_container()
     return {

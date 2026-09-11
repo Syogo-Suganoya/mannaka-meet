@@ -100,7 +100,7 @@ gcloud run deploy mannaka-meet --source . --allow-unauthenticated \
   Cloud Run が渡す 8080 でそのまま動く
 
 完了すると `https://mannaka-meet-xxxxxxxx-an.a.run.app` のようなURLが出る。
-末尾に `/healthz` を付けて開き、どのプロバイダで動いているか確認する。
+末尾に `/health` を付けて開き、どのプロバイダで動いているか確認する。
 
 ```json
 {"status":"ok","providers":{"transit":"mock","llm":"stub","repository":"firestore"}}
@@ -149,7 +149,7 @@ gcloud run services update mannaka-meet \
   --set-env-vars LLM_PROVIDER=gemini,TRANSIT_PROVIDER=ekispert
 ```
 
-再び `/healthz` を開き、`"llm":"gemini"` `"transit":"ekispert"` になっていれば成功。
+再び `/health` を開き、`"llm":"gemini"` `"transit":"ekispert"` になっていれば成功。
 **モックのままなら、キーの設定か権限付与が効いていない**（アダプタの初期化に失敗すると
 モックに落ちて起動を継続する仕様のため、502にはならず静かにモックで動く）。
 原因はログに出る。
@@ -279,7 +279,7 @@ docker push asia-northeast1-docker.pkg.dev/mannaka-meet/mannaka-meet/app:v1
 | ジョブ | 内容 | 現在 |
 |---|---|---|
 | `test` | pytest（Firestore実接続テストはエミュレータが無いので自動スキップ） | 手動実行時に動く |
-| `deploy` | `gcloud run deploy --source .` → `/healthz` で起動確認 | **止まる** |
+| `deploy` | `gcloud run deploy --source .` → `/health` で起動確認 | **止まる** |
 
 ### C-1. オンにする準備（初回のみ）
 
@@ -354,7 +354,7 @@ gcloud iam service-accounts add-iam-policy-binding \
 
 | 見るところ | 期待する結果 |
 |---|---|
-| `/healthz` | `providers` が意図したモードになっている |
+| `/health` | `providers` が意図したモードになっている |
 | `/` | トップページ（機能と使い方）が開く |
 | `/app` | 入力フォームが出て、参加者を入れると候補地が並ぶ |
 | `/docs` | OpenAPI ドキュメントが出る |
@@ -364,11 +364,11 @@ gcloud iam service-accounts add-iam-policy-binding \
 
 | 症状 | 原因と対処 |
 |---|---|
-| 実APIにしたのに `/healthz` が `mock` のまま | アダプタの初期化に失敗してモックに落ちている。ログの警告を見る。キーの値かIAM権限を疑う |
+| 実APIにしたのに `/health` が `mock` のまま | アダプタの初期化に失敗してモックに落ちている。ログの警告を見る。キーの値かIAM権限を疑う |
 | Firestore で 403 | サービスアカウントに `roles/datastore.user` が付いていない |
 | デプロイは成功するがコンテナが起動しない | ポート。`$PORT` を上書きしない（Dockerfile はそのままでよい） |
 | ビルドが遅い / Buildpacks が走る | ビルドタイプが Dockerfile になっているか確認する |
-| 会議データが再起動で消える | `/healthz` の `repository` が `memory` に落ちている。Firestore の DB 作成か IAM 権限を確認する |
+| 会議データが再起動で消える | `/health` の `repository` が `memory` に落ちている。Firestore の DB 作成か IAM 権限を確認する |
 
 ## 費用について
 

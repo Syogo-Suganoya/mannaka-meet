@@ -89,7 +89,7 @@ def test_unknown_meeting_returns_404(client):
     assert client.post("/api/meetings/nope/optimize", json={}).status_code == 404
 
 
-def test_healthz_reports_providers(client):
-    body = client.get("/healthz").json()
+def test_health_reports_providers(client):
+    body = client.get("/health").json()
     assert body["status"] == "ok"
     assert set(body["providers"]) == {"transit", "llm", "repository"}

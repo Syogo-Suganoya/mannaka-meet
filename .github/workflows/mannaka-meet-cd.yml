@@ -85,11 +85,11 @@ jobs:
             --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID" \
             --quiet
 
-      - name: 起動確認（/healthz）
+      - name: 起動確認（/health）
         run: |
           URL=$(gcloud run services describe "$SERVICE" \
             --project "$PROJECT_ID" --region "$REGION" \
             --format='value(status.url)')
           echo "デプロイ先: $URL"
-          curl -sSf --retry 5 --retry-delay 3 "$URL/healthz" | tee /dev/stderr | grep -q '"status":"ok"'
+          curl -sSf --retry 5 --retry-delay 3 "$URL/health" | tee /dev/stderr | grep -q '"status":"ok"'
           echo "### デプロイ完了: $URL" >> "$GITHUB_STEP_SUMMARY"
