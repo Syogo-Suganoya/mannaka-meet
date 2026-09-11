@@ -85,7 +85,7 @@ gcloud firestore databases create --location=asia-northeast1
 
 ### A-3. デプロイする
 
-リポジトリの `gcp_hack/mannaka-meet` ディレクトリで実行する。
+リポジトリのルート（`pyproject.toml` があるディレクトリ）で実行する。
 
 ```bash
 gcloud run deploy mannaka-meet --source . --allow-unauthenticated \
@@ -201,9 +201,8 @@ gcloud run services delete mannaka-meet            # 削除
    |---|---|
    | ブランチ | `^main$` |
    | ビルドタイプ | **Dockerfile** |
-   | ソースの場所 | `/gcp_hack/mannaka-meet/Dockerfile` |
+   | ソースの場所 | `/Dockerfile` |
 
-   リポジトリ直下にマンナカを置いている場合は `/Dockerfile`。
    Buildpacks ではなく **Dockerfile を選ぶ**こと（このプロジェクトは Dockerfile を同梱している）。
 6. **「保存」**
 7. サービス作成フォームに戻るので、続けて設定する
@@ -342,7 +341,7 @@ gcloud iam service-accounts add-iam-policy-binding \
 - **手動**: Actions タブ → 「マンナカ CD」→ **Run workflow** →
   「デプロイまで実行する」を **true** にして実行
 - **push で自動**: ワークフロー冒頭の `push:` のコメントを外す。
-  `gcp_hack/mannaka-meet/**` が変わった push でだけ動く
+  main への push で動く
 
 ### C-4. オフに戻す
 

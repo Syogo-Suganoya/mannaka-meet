@@ -1,4 +1,4 @@
-# マンナカ（gcp_hack/mannaka-meet）を Cloud Run へデプロイする CD。
+# マンナカを Cloud Run へデプロイする CD。リポジトリのルートで動かす。
 #
 # ■ 現在の状態: 自動デプロイはオフ
 #   push では起動しない。手動実行（Actions タブの "Run workflow"）だけができる。
@@ -37,9 +37,6 @@ jobs:
   test:
     name: テスト
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: gcp_hack/mannaka-meet
     steps:
       - uses: actions/checkout@v4
 
@@ -47,7 +44,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: gcp_hack/mannaka-meet/pyproject.toml
+          cache-dependency-path: pyproject.toml
 
       - name: 依存をインストール
         run: pip install ".[dev]"
@@ -67,9 +64,6 @@ jobs:
     permissions:
       contents: read
       id-token: write # Workload Identity Federation に必要
-    defaults:
-      run:
-        working-directory: gcp_hack/mannaka-meet
     steps:
       - uses: actions/checkout@v4
 
