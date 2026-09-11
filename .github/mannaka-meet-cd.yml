@@ -25,12 +25,11 @@ on:
         type: boolean
         default: false
 
-  # ↓ 自動デプロイをオンにするときにコメントを外す
-  # push:
-  #   branches: [main]
-  #   paths:
-  #     - "gcp_hack/mannaka-meet/**"
-  #     - ".github/workflows/mannaka-meet-cd.yml"
+  push:
+    branches: [main]
+    paths:
+      - "gcp_hack/mannaka-meet/**"
+      - ".github/workflows/mannaka-meet-cd.yml"
 
 env:
   PROJECT_ID: mannaka-meet
