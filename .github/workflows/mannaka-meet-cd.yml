@@ -61,6 +61,11 @@ jobs:
     runs-on: ubuntu-latest
     # CD_ENABLED が true で、かつ手動実行時に deploy を選んだときだけ動く
     if: vars.CD_ENABLED == 'true' && (github.event_name == 'push' || inputs.deploy)
+    # リポジトリのトップに Deployments として出す。URL は実際に出した先を使う
+    # （Cloud Run のURLは固定だが、書き写すと環境を増やしたとき必ずずれる）
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
     permissions:
       contents: read
       id-token: write # Workload Identity Federation に必要
@@ -76,6 +81,7 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: デプロイ
+        id: deploy
         run: |
           gcloud run deploy "$SERVICE" \
             --source . \
@@ -84,12 +90,14 @@ jobs:
             --allow-unauthenticated \
             --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID" \
             --quiet
-
-      - name: 起動確認（/health）
-        run: |
           URL=$(gcloud run services describe "$SERVICE" \
             --project "$PROJECT_ID" --region "$REGION" \
             --format='value(status.url)')
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
           echo "デプロイ先: $URL"
+
+      - name: 起動確認（/health）
+        run: |
+          URL="${{ steps.deploy.outputs.url }}"
           curl -sSf --retry 5 --retry-delay 3 "$URL/health" | tee /dev/stderr | grep -q '"status":"ok"'
           echo "### デプロイ完了: $URL" >> "$GITHUB_STEP_SUMMARY"
