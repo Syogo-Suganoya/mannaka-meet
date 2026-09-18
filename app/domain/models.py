@@ -1,6 +1,6 @@
 """マンナカのドメインモデル。
 
-設計書 §7 のデータモデルに対応する。個人情報の扱いは §8 に従い、
+Firestore のデータモデルに対応する。個人情報は増やさない方針に従い、
 参加者について受け取るのは名前と出発駅までとし、住所も連絡先も持たない。
 """
 
@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 
 class FairnessPolicy(str, Enum):
-    """設計書 §5「最適化ロジック」の評価関数。"""
+    """候補地の評価関数。同じ参加者でも、どれを選ぶかで結論が変わる。"""
 
     SUM = "sum"  # 合計移動時間最小
     MINIMAX = "minimax"  # 最大負担の平準化
@@ -139,7 +139,7 @@ class Meeting(BaseModel):
 
 
 class AuditLog(BaseModel):
-    """audit/{logId} — どの基準でどう評価したかの証跡（設計書 §8）。"""
+    """audit/{logId} — どの基準でどう評価したかの証跡。"""
 
     log_id: str
     meeting_id: str | None

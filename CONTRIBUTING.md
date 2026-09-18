@@ -1,6 +1,6 @@
 # 開発ガイド
 
-マンナカの開発手順。プロダクトの概要と使い方は [README.md](README.md) を参照。
+マンナカの開発手順。
 
 開発環境はすべて Docker に閉じてある。ホストに Python や graphviz を入れる必要はない。
 
@@ -15,7 +15,6 @@ docker compose down           # 停止
 # 数字が毎回変わらないよう、モックのまま撮る
 TRANSIT_PROVIDER=mock LLM_PROVIDER=stub \
   docker compose --profile shots up --build shots
-docker compose --profile shots down   # 撮ったあとはこちらで止める
 ```
 
 画面を変えたら `web/shots/*.png` も撮り直してコミットする。トップページの「使い方」は
@@ -96,7 +95,7 @@ API・UI・テストはいずれも変更不要。
 
 ## データストア
 
-データはすべて Firestore に置く（設計書 §7）。`docker compose up` で Firestore
+データはすべて Firestore に置く。`docker compose up` で Firestore
 エミュレータが一緒に立ち上がり、api はそれが healthy になってから起動する。
 設定は不要で、`/health` の `repository` が `firestore` になっていれば繋がっている。
 
@@ -186,12 +185,29 @@ graphviz と日本語フォントは `Dockerfile.docs` に入れてあるので�
 
 ## デプロイ
 
-Cloud Run への手順は [DEPLOY.md](DEPLOY.md) にまとめてある
-（CLI・画面操作・GitHub Actions の3パターン）。
+手元から出すときは Cloud Build 経由で1コマンド。Dockerfile はローカルと同じものを使う。
 
-GitHub Actions の CD は `.github/workflows/mannaka-meet-cd.yml`。**現在オフ**で、
-手動実行するとテストだけ流れる。オンにするには GitHub の Variables に
-`CD_ENABLED=true` を設定する（DEPLOY.md パターンC）。
+```bash
+gcloud run deploy mannaka-meet \
+  --source . \
+  --project mannaka-meet \
+  --region asia-northeast1 \
+  --allow-unauthenticated \
+  --set-env-vars GOOGLE_CLOUD_PROJECT=mannaka-meet
+```
+
+`--set-env-vars` はコンテナの環境変数を決めるだけで、**デプロイ先は決めない**。
+`--project` を省くと gcloud の既定プロジェクトへ出てしまうので必ず付ける。
+
+GitHub Actions の CD は `.github/workflows/mannaka-meet-cd.yml`。テストは常に流れ、
+デプロイは GitHub の Variables に `CD_ENABLED=true` があるときだけ動く。
+認証は Workload Identity Federation で、鍵ファイルは置かない。
+
+| Variables | 中身 |
+|---|---|
+| `CD_ENABLED` | `true` でデプロイまで進む。消せば止まる |
+| `WIF_PROVIDER` | Workload Identity プロバイダのリソース名 |
+| `DEPLOY_SERVICE_ACCOUNT` | デプロイに使うサービスアカウント |
 
 APIキーはリポジトリにコミットしない。ローカルで実APIを試すときは `.env`
 （`.gitignore` 対象）に置き、Cloud Run では Secret Manager 経由で渡す。

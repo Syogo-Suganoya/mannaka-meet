@@ -1,4 +1,4 @@
-"""監査ログ（設計書 §8 可観測性）。
+"""監査ログ。
 
 Firestore（または memory）へ残すのと同時に、Cloud Logging が拾える
 構造化JSONを stdout に出す。判断根拠は必ず payload に載せる。

@@ -1,19 +1,19 @@
 # マンナカを Cloud Run へデプロイする CD。リポジトリのルートで動かす。
 #
-# ■ 現在の状態: 自動デプロイはオフ
-#   push では起動しない。手動実行（Actions タブの "Run workflow"）だけができる。
-#   さらに安全側に倒すため、環境変数 CD_ENABLED が "true" でなければ
-#   デプロイ手前で停止する（テストだけ流して終わる）。
+# ■ 動き方
+#   main への push と、Actions タブからの手動実行で起動する。
+#   テストは常に流れる。デプロイは Variables の CD_ENABLED が "true" の
+#   ときだけ動き、無ければテストで終わる（既定で安全側）。
 #
-# ■ オンにする手順
-#   1. GitHub の Settings > Secrets and variables > Actions > Variables で
-#      CD_ENABLED = true を作る（これだけで手動デプロイが通るようになる）
-#   2. main への push でも動かしたいときは、下の `push:` のコメントを外す
-#   3. 認証情報（Variables / Secrets）は DEPLOY.md「パターンC」を参照
+# ■ デプロイをオンにする
+#   GitHub の Settings > Secrets and variables > Actions > Variables に
+#   CD_ENABLED = true を作る。オフに戻すときは false にするか変数ごと削除する。
 #
-# ■ オフに戻す手順
-#   CD_ENABLED を false にする（または変数ごと削除する）。
-#   push トリガーを付けている場合はコメントに戻す。
+# ■ 必要な Variables
+#   CD_ENABLED             デプロイまで進めるかどうか
+#   WIF_PROVIDER           Workload Identity プロバイダのリソース名
+#   DEPLOY_SERVICE_ACCOUNT デプロイに使うサービスアカウント
+#   鍵ファイルは置かない。GitHub の OIDC トークンを Google 側で受ける。
 
 name: マンナカ CD
 

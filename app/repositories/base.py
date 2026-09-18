@@ -1,4 +1,4 @@
-"""永続化のポート。設計書 §7 の Firestore コレクションに1対1で対応する。"""
+"""永続化のポート。Firestore のコレクションに1対1で対応する。"""
 
 from __future__ import annotations
 
