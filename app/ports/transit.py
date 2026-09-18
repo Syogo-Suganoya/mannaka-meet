@@ -1,6 +1,6 @@
 """経路・運賃のポート。
 
-実装は adapters/mock（既定）と adapters/ekispert（駅すぱあとAPI / MCP）を
+実装は adapters/mock（既定）と adapters/ekispert（駅すぱあとAPI）を
 差し替えられる。呼び出し側はこのインターフェースだけに依存する。
 """
 

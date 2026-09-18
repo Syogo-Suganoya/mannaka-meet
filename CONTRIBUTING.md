@@ -10,7 +10,16 @@
 docker compose up --build     # 起動（app/ web/ はホストとマウント、--reload 有効）
 docker compose run --rm api pytest -q   # テスト
 docker compose down           # 停止
+
+# トップページに載せる画面の写しを撮り直す（web/shots/*.png）
+# 数字が毎回変わらないよう、モックのまま撮る
+TRANSIT_PROVIDER=mock LLM_PROVIDER=stub \
+  docker compose --profile shots up --build shots
+docker compose --profile shots down   # 撮ったあとはこちらで止める
 ```
+
+画面を変えたら `web/shots/*.png` も撮り直してコミットする。トップページの「使い方」は
+この写しをそのまま載せているので、撮り直さないと説明と画面が食い違う。
 
 `app/` と `web/` はコンテナにマウントしているので、編集すればそのまま反映される。
 依存を増やしたときだけ `--build` を付け直す。
@@ -44,7 +53,9 @@ web/
   app.html         アプリ本体（入力フォーム・表情・候補地）→ `/app`
   app.js           アプリの挙動
   app.css          アプリのスタイル
+  shots/           トップページに載せる画面の写し（docs/shots.js が撮る）
 docs/              アーキテクチャ図の定義と出力
+  shots.js         画面の写しを撮る手順
 tests/
   factories.py     テスト用の固定参加者6名
 ```
@@ -85,15 +96,17 @@ API・UI・テストはいずれも変更不要。
 
 ## データストア
 
-データはすべて Firestore に置く（設計書 §6）。`docker compose up` で Firestore
+データはすべて Firestore に置く（設計書 §7）。`docker compose up` で Firestore
 エミュレータが一緒に立ち上がり、api はそれが healthy になってから起動する。
 設定は不要で、`/health` の `repository` が `firestore` になっていれば繋がっている。
 
 | コレクション | 中身 |
 |---|---|
-| `users` | 参加者プロフィール（最寄り駅まで） |
-| `meetings` | 依頼・候補・決定・経路・配信・起案 |
+| `meetings` | 依頼（日時・参加者）・採用した基準・候補と内訳 |
 | `audit` | どの基準でどう評価したかの証跡 |
+
+参加者はリクエストごとの連番 `uid` で持ち、コレクションにはしない。
+ログインが無いので、会をまたいで同じ人を指す識別子が存在しないため。
 
 **エミュレータはデータをメモリに持つ。** api を再起動してもデータは残るが、
 エミュレータのコンテナを作り直すと消える。消したいときは `docker compose down`。
@@ -111,10 +124,8 @@ API・UI・テストはいずれも変更不要。
   その人だけ0分0円になり、どの候補が最良かという結論そのものが狂うため。
   都心ターミナルは速いが運賃水準が高く、郊外の結節点は遅いが安い。この非相関により、
   3つのポリシーで結論が割れる。
-- **運行実況**: 日付と路線から決定的に遅延を発生させる（約12%の路線）。
-  実APIと同じく「こちらから起こすものではなく、起きているもの」として扱う。
-  テストでは `MockTransitAdapter.inject_disruption()` で明示的に起こし、
-  `conftest.py` の `quiet_transit` が自然発生を止めている。
+- **駅の座標**: 同じ表の実座標（緯度・経度）を返す。地図を描くためだけに使い、
+  評価には入れない。所要と運賃は上の相対kmから出す。
 
 モックは乱数を使わない。同じ入力なら常に同じ出力になるので、テストと動作確認の再現性が保てる。
 
@@ -146,15 +157,17 @@ docker compose run --rm api pytest tests/test_flow.py -v   # 個別に流す
 
 | メソッド | パス | 用途 |
 |---|---|---|
-| GET | `/api/members` | メンバー一覧 |
-| GET/POST | `/api/meetings` | 会議の一覧／依頼フォームから作成（候補算出まで） |
+| POST | `/api/meetings` | 依頼フォームから作成（候補算出まで） |
+| GET | `/api/meetings/{id}` | 会議の取得 |
 | POST | `/api/meetings/{id}/optimize` | ポリシー指定で候補算出 |
 | GET | `/api/meetings/{id}/policy-comparison` | 3ポリシーの結論の差 |
-| POST | `/api/meetings/{id}/follow-up` | 遅延監視と時刻調整の起案 |
-| POST | `/api/meetings/{id}/proposal` | 起案の承諾／見送り |
 | GET | `/api/meetings/{id}/audit` | 監査ログ |
+| GET | `/health` | 稼働確認とプロバイダの表示 |
 
 `400` は経路を引けない駅や空の出発駅、`404` は無い会議、`422` は参加者ゼロ。
+
+`/healthz` にはしない。Cloud Run の手前の Google フロントエンドがこのパスを
+横取りし、コンテナに届く前に404を返す（`app/main.py` に理由を残してある）。
 
 起動中は <http://localhost:8081/docs> に OpenAPI ドキュメントが出る。
 

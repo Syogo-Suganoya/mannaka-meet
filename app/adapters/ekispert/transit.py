@@ -1,4 +1,4 @@
-"""駅すぱあとAPI / MCPサーバー用アダプタ（実接続の差し替え先）。
+"""駅すぱあとAPI アダプタ（実接続の差し替え先）。REST を直接叩く。
 
 TRANSIT_PROVIDER=ekispert かつ EKISPERT_API_KEY を設定すると有効になる。
 HTTP の呼び出し形はここに閉じており、ドメイン層は TransitPort しか知らない。

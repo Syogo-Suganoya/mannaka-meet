@@ -13,7 +13,6 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-stub}             # stub | gemini
       # 実APIに差し替えるときだけ設定する
       EKISPERT_API_KEY: ${EKISPERT_API_KEY:-}
-      EKISPERT_MCP_URL: ${EKISPERT_MCP_URL:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.7-flash}
       FIRESTORE_EMULATOR_HOST: ${FIRESTORE_EMULATOR_HOST:-firestore:8200}
@@ -24,8 +23,37 @@ services:
       - ./web:/app/web
       - ./tests:/app/tests
     command: sh -c "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080} --reload"
+    healthcheck:
+      # curl は入っていないので python で叩く
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
     depends_on:
       firestore:
+        condition: service_healthy
+
+  # 紹介ページに載せる画面の写しを撮る。
+  # `docker compose --profile shots up --build shots`
+  shots:
+    profiles: ["shots"]
+    build:
+      context: .
+      dockerfile: Dockerfile.shots
+    image: mannaka-meet-shots
+    user: root
+    working_dir: /work
+    environment:
+      BASE_URL: http://api:8080
+      NODE_PATH: /usr/src/app/node_modules
+      # 集合日時の既定は「明日の14時」。端末の時計で決まるので日本時間に固定する。
+      TZ: Asia/Tokyo
+    entrypoint: ["node", "docs/shots.js"]
+    volumes:
+      - .:/work
+    depends_on:
+      api:
         condition: service_healthy
 
   # アーキテクチャ図の生成: docker compose --profile docs run --rm docs

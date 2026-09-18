@@ -53,7 +53,6 @@ def main() -> None:
         with Cluster("外部API", graph_attr={"fontname": FONT, "bgcolor": "#fdf3ec"}):
             ekispert = Action("駅すぱあと API\nMCPサーバー")
             gemini = AIPlatform("Gemini API")
-            calendar = Action("Google Calendar")
 
         with Cluster("データ", graph_attr={"fontname": FONT, "bgcolor": "#eef7ef"}):
             firestore = Firestore("Firestore")
@@ -61,9 +60,8 @@ def main() -> None:
 
         users >> Edge(label="参加者と出発駅", **edge_attr) >> app
         app >> Edge(label="候補地と負担の内訳", **edge_attr) >> users
-        app >> Edge(label="経路・運賃・運行実況", **edge_attr) >> ekispert
+        app >> Edge(label="結節駅・経路・運賃", **edge_attr) >> ekispert
         app >> Edge(label="依頼解釈・説明文", **edge_attr) >> gemini
-        app >> Edge(label="予定登録", **edge_attr) >> calendar
         app >> firestore
         app >> logging
 

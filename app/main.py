@@ -34,7 +34,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="マンナカ",
-    description="N人会議場所最適化エージェント。公平性ポリシーを宣言して場所を決め、手配・配信・当日フォローまで実行する。",
+    description="N人会議場所最適化エージェント。宣言した公平性ポリシーで集合場所の候補を並べ、誰がどれだけ負担するかを出す。決めるのは人。",
     version="0.1.0",
     lifespan=lifespan,
 )

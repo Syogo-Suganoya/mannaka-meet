@@ -261,8 +261,17 @@ section h2[class^="m-"]::before {
   overflow: hidden;
 }
 .shot figcaption { color: var(--sub); font-size: 0.82rem; }
-.shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.shot:has(img) { border-style: solid; padding: 0; }
+.shot img { display: block; width: 100%; height: auto; }
+/* 写しが入ったら比は写し自身に任せる。16:10 に切ると画面の端が落ちる。
+   中央寄せの枠のままだと、幅が「中身の100%」を指して決まらないことがある。 */
+.shot:has(img) {
+  display: block;
+  border-style: solid;
+  padding: 0;
+  aspect-ratio: auto;
+}
+/* 縦に長い写し（入力の面）。同じ幅で置くと1枚だけ背が高くなりすぎる。 */
+.shot.tall { max-width: 360px; }
 
 /* ------------------------------------------------------------ ボタン */
 
