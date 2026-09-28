@@ -56,6 +56,27 @@ services:
       api:
         condition: service_healthy
 
+  # 提出用のデモ動画を撮る。shots と同じコンテナで、操作の手順だけが違う。
+  # `docker compose --profile shots run --rm --build demo`
+  demo:
+    profiles: ["shots"]
+    image: mannaka-meet-shots
+    build:
+      context: .
+      dockerfile: Dockerfile.shots
+    user: root
+    working_dir: /work
+    environment:
+      BASE_URL: http://api:8080
+      NODE_PATH: /usr/src/app/node_modules
+      TZ: Asia/Tokyo
+    entrypoint: ["node", "docs/demo.js"]
+    volumes:
+      - .:/work
+    depends_on:
+      api:
+        condition: service_healthy
+
   # アーキテクチャ図の生成: docker compose --profile docs run --rm docs
   docs:
     profiles: ["docs"]

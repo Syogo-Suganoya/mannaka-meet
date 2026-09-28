@@ -15,10 +15,18 @@ docker compose down           # 停止
 # 数字が毎回変わらないよう、モックのまま撮る
 TRANSIT_PROVIDER=mock LLM_PROVIDER=stub \
   docker compose --profile shots up --build shots
+
+# 提出用のデモ動画を撮る（docs/demo/mannaka-demo.mp4、約1分20秒）
+TRANSIT_PROVIDER=mock LLM_PROVIDER=stub \
+  docker compose --profile shots run --rm --build demo
 ```
 
 画面を変えたら `web/shots/*.png` も撮り直してコミットする。トップページの「使い方」は
 この写しをそのまま載せているので、撮り直さないと説明と画面が食い違う。
+
+デモ動画は画面の写しと同じコンテナで、人が触る速さで通しの操作を録画する。
+ヘッドレスではカーソルが映らないので、偽のカーソルと押した印をページに描いている。
+ナレーションの代わりに字幕を焼き込む。動画は大きいのでコミットしない（`.gitignore` 済み）。
 
 `app/` と `web/` はコンテナにマウントしているので、編集すればそのまま反映される。
 依存を増やしたときだけ `--build` を付け直す。
