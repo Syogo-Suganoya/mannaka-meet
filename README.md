@@ -6,6 +6,8 @@
 
 ## 使い方
 
+https://github.com/user-attachments/assets/2db05121-9c47-4f4c-b47e-07c7b73088d2
+
 ### 1. 名前と出発駅を入れる
 
 <img src="web/shots/step1.png" width="380" alt="6人の名前と出発駅を入れた入力フォーム">
