@@ -201,11 +201,34 @@ gcloud run deploy mannaka-meet \
   --project mannaka-meet \
   --region asia-northeast1 \
   --allow-unauthenticated \
-  --set-env-vars GOOGLE_CLOUD_PROJECT=mannaka-meet
+  --set-env-vars GOOGLE_CLOUD_PROJECT=mannaka-meet,ENV=production,LLM_PROVIDER=gemini,TRANSIT_PROVIDER=ekispert \
+  --set-secrets GOOGLE_API_KEY=google-api-key:latest,EKISPERT_API_KEY=ekispert-api-key:latest
 ```
 
 `--set-env-vars` はコンテナの環境変数を決めるだけで、**デプロイ先は決めない**。
 `--project` を省くと gcloud の既定プロジェクトへ出てしまうので必ず付ける。
+
+`--set-*` は既存の値を消してから入れ直す。本番の設定は、このコマンドと
+ワークフローの2か所に**同じものを全部**書く。片方だけ足すと、もう片方で
+デプロイした時点で消える。
+
+APIキーは Secret Manager に置き、Cloud Run の実行アカウントに読み取り権限を渡す
+（初回だけ）。
+
+```bash
+printf '%s' 'キー' | gcloud secrets create google-api-key --data-file=- --project mannaka-meet
+printf '%s' 'キー' | gcloud secrets create ekispert-api-key --data-file=- --project mannaka-meet
+gcloud secrets add-iam-policy-binding google-api-key --project mannaka-meet \
+  --member serviceAccount:181246037232-compute@developer.gserviceaccount.com \
+  --role roles/secretmanager.secretAccessor
+gcloud secrets add-iam-policy-binding ekispert-api-key --project mannaka-meet \
+  --member serviceAccount:181246037232-compute@developer.gserviceaccount.com \
+  --role roles/secretmanager.secretAccessor
+```
+
+キーが読めないとアプリはモックに落ちて起動自体は成功する。ワークフローの起動確認は
+`/health` が `gemini` と `ekispert` になっていなければ失敗させ、モックのまま
+公開されるのを防いでいる。
 
 GitHub Actions の CD は `.github/workflows/mannaka-meet-cd.yml`。テストは常に流れ、
 デプロイは GitHub の Variables に `CD_ENABLED=true` があるときだけ動く。

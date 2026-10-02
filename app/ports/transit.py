@@ -50,6 +50,17 @@ class TransitPort(ABC):
         """
         return None
 
+    async def unknown_stations(self, stations: list[str]) -> list[str]:
+        """経路を引けない駅名を、入力の順で返す。
+
+        既定は known_stations() との突き合わせ。列挙できない実装（実API）は
+        駅名を1つずつ問い合わせて確かめるよう上書きする。
+        """
+        known = await self.known_stations()
+        if known is None:
+            return []
+        return [s for s in stations if s not in known]
+
     async def routes_for(
         self,
         *,

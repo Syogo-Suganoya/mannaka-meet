@@ -14,6 +14,9 @@ from app.ports.llm import LlmPort
 
 logger = logging.getLogger(__name__)
 
+# 1回の呼び出しで待つ上限。正常時の応答は5秒前後（実測）
+TIMEOUT_MS = 8000
+
 PARSE_INSTRUCTION = """あなたは会議調整の依頼文を構造化するパーサです。
 入力の日本語から次のJSONだけを出力してください（説明文は不要）。
 {
@@ -32,8 +35,18 @@ class GeminiLlmAdapter(LlmPort):
 
     def __init__(self, api_key: str, model: str = "gemini-3.7-flash") -> None:
         from google import genai  # 遅延importでキー未設定環境への影響を避ける
+        from google.genai import types
 
-        self._client = genai.Client(api_key=api_key)
+        # 混雑時（503）に SDK が待ちながら再試行すると、1回の候補算出が
+        # 20秒近くかかった（実測）。どうせ最後はルールベースに落ちるので、
+        # 再試行はせず、待つのも TIMEOUT_MS までにして早く諦める。
+        self._client = genai.Client(
+            api_key=api_key,
+            http_options=types.HttpOptions(
+                timeout=TIMEOUT_MS,
+                retry_options=types.HttpRetryOptions(attempts=1),
+            ),
+        )
         self._model = model
         self._fallback = StubLlmAdapter()
 

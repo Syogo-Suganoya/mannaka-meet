@@ -80,6 +80,9 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
+      # 本番の設定はすべてここに書く。--set-* は既存の値を消してから入れ直すので、
+      # コンソールや gcloud run services update で足した設定は、次のデプロイで消える。
+      # キーは Secret Manager に置き、名前だけを渡す（作り方は CONTRIBUTING.md）。
       - name: デプロイ
         id: deploy
         run: |
@@ -88,7 +91,8 @@ jobs:
             --project "$PROJECT_ID" \
             --region "$REGION" \
             --allow-unauthenticated \
-            --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID" \
+            --set-env-vars "GOOGLE_CLOUD_PROJECT=$PROJECT_ID,ENV=production,LLM_PROVIDER=gemini,TRANSIT_PROVIDER=ekispert" \
+            --set-secrets "GOOGLE_API_KEY=google-api-key:latest,EKISPERT_API_KEY=ekispert-api-key:latest" \
             --quiet
           URL=$(gcloud run services describe "$SERVICE" \
             --project "$PROJECT_ID" --region "$REGION" \
@@ -99,5 +103,11 @@ jobs:
       - name: 起動確認（/health）
         run: |
           URL="${{ steps.deploy.outputs.url }}"
-          curl -sSf --retry 5 --retry-delay 3 "$URL/health" | tee /dev/stderr | grep -q '"status":"ok"'
+          HEALTH=$(curl -sSf --retry 5 --retry-delay 3 "$URL/health")
+          echo "$HEALTH"
+          echo "$HEALTH" | grep -q '"status":"ok"'
+          # キーが読めないとアプリはモックに落ちて起動は成功する。黙って
+          # モックのまま公開しないよう、実APIで動いていることまで確かめる
+          echo "$HEALTH" | grep -q '"llm":"gemini"' || { echo "::error::Gemini で動いていません（GOOGLE_API_KEY のシークレットを確認）"; exit 1; }
+          echo "$HEALTH" | grep -q '"transit":"ekispert"' || { echo "::error::駅すぱあとで動いていません（EKISPERT_API_KEY のシークレットを確認）"; exit 1; }
           echo "### デプロイ完了: $URL" >> "$GITHUB_STEP_SUMMARY"

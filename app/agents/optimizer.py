@@ -44,17 +44,9 @@ class OptimizerAgent:
 
         黙って近くの駅に寄せると、その人だけ0分0円で来られることになり、
         どの候補が最良かという結論そのものが狂う。受け付ける前に弾く。
-        列挙できないプロバイダ（実API）では常に空を返す。
         """
-        known = await self._transit.known_stations()
-        if known is None:
-            return []
-        seen: list[str] = []
-        for station in stations:
-            name = (station or "").strip()
-            if name and name not in known and name not in seen:
-                seen.append(name)
-        return seen
+        names = list(dict.fromkeys(n for n in ((s or "").strip() for s in stations) if n))
+        return await self._transit.unknown_stations(names)
 
     async def evaluate(
         self, *, meeting_id: str, request: MeetingRequest, policy: FairnessPolicy
@@ -70,13 +62,29 @@ class OptimizerAgent:
                     participants=participants, to_station=station, arrive_by=arrive_by
                 )
                 for _, station in hubs
-            )
+            ),
+            return_exceptions=True,
         )
 
-        candidates: list[CandidateArea] = [
-            optimization.summarize(area, station, legs)
-            for (area, station), legs in zip(hubs, legs_per_hub)
-        ]
+        # 1つの候補で誰かの経路が引けなくても、他の候補まで道連れにしない。
+        # その候補だけを外し、外したことは監査ログに残す（黙って消さない）。
+        candidates: list[CandidateArea] = []
+        dropped: list[dict] = []
+        for (area, station), legs in zip(hubs, legs_per_hub):
+            if isinstance(legs, Exception):
+                dropped.append({"station": station, "reason": str(legs)})
+                continue
+            candidates.append(optimization.summarize(area, station, legs))
+        if dropped:
+            await self._audit.record(
+                action="candidates.dropped",
+                actor=self.actor,
+                meeting_id=meeting_id,
+                transit_provider=self._transit.name,
+                dropped=dropped,
+            )
+        if not candidates:
+            raise ValueError("どの候補地にも全員分の経路が見つかりませんでした。出発駅を確認してください")
         result = optimization.optimize(candidates, policy)
         result.explanation = await self._explain(result, request)
 
