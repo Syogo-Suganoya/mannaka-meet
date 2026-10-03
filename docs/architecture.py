@@ -48,10 +48,10 @@ def main() -> None:
         users = Users("参加者・主催者")
 
         with Cluster("Cloud Run", graph_attr={"fontname": FONT, "bgcolor": "#eaf1f8"}):
-            app = Run("FastAPI + ADK\nOrchestrator / Optimizer")
+            app = Run("FastAPI\nOrchestrator / Optimizer")
 
         with Cluster("外部API", graph_attr={"fontname": FONT, "bgcolor": "#fdf3ec"}):
-            ekispert = Action("駅すぱあと API\nMCPサーバー")
+            ekispert = Action("駅すぱあと API")
             gemini = AIPlatform("Gemini API")
 
         with Cluster("データ", graph_attr={"fontname": FONT, "bgcolor": "#eef7ef"}):

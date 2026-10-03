@@ -14,8 +14,11 @@ from app.ports.llm import LlmPort
 
 logger = logging.getLogger(__name__)
 
-# 1回の呼び出しで待つ上限。正常時の応答は5秒前後（実測）
-TIMEOUT_MS = 8000
+# 1回の呼び出しで待つ上限。正常時の応答は5秒前後（実測）。
+# 10秒未満にはしないこと。この値はサーバー側の締切としても送られ、10秒未満だと
+# Gemini API が「Minimum allowed deadline is 10s」で全件 400 を返す
+# （8秒にして本番の呼び出しが全滅したことがある）。
+TIMEOUT_MS = 10_000
 
 PARSE_INSTRUCTION = """あなたは会議調整の依頼文を構造化するパーサです。
 入力の日本語から次のJSONだけを出力してください（説明文は不要）。

@@ -138,3 +138,10 @@ async def test_ekispert_rejects_unknown_names_before_routing():
 
     assert await adapter.unknown_stations(["大宮", "どこでもない駅", "三鷹"]) == ["どこでもない駅"]
     await client.aclose()
+
+
+def test_gemini_timeout_is_not_below_the_api_minimum():
+    """Gemini API は10秒未満の締切を 400 で拒否する。下回ると全呼び出しが失敗する。"""
+    from app.adapters.google.llm import TIMEOUT_MS
+
+    assert TIMEOUT_MS >= 10_000

@@ -49,7 +49,7 @@ app/
   agents/
     orchestrator.py  依頼の受付と進行管理
     optimizer.py     候補算出・ポリシー適用（自律）
-    adk_agent.py     ADK LlmAgent としての公開（Gemini 使用時）
+    adk_agent.py     ADK LlmAgent の定義（起動時に組み立てるが、まだどこからも呼んでいない）
   repositories/    firestore（既定）/ memory（テスト用）
   services/
     audit.py         監査ログ（Firestore + 構造化JSONログ）
@@ -73,7 +73,7 @@ tests/
   `adapters/registry.py` だけ。新しい外部サービスを足すときは、ポートを定義 →
   モック実装 → registry に分岐、の順で進める。
 - **どこに集まるかは決めない。** 候補と根拠を出すところまでが仕事。
-  場所を選ぶツールは ADK にも公開しない（`adk_agent.py`）。
+  ADK のエージェント（`adk_agent.py`）にも、場所を選ぶツールは持たせない。
 - **判断したことは監査ログに残す。** ポリシー選択と評価の根拠は
   `AuditService.record()` の payload に構造化して入れる。
 - **個人情報を増やさない。** 受け取るのは名前と出発駅まで。住所・連絡先・
